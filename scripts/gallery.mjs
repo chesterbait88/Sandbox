@@ -98,7 +98,7 @@ await page.click('.modes .btn:nth-child(1)');
 await page.click('.screen-loadout >> text=DEPLOY');
 await wait(1400);
 await shot('countdown', 'Countdown with the camera swooping onto the spawn pad; control hint visible.', 'Number styling, hint placement, the drop-in camera framing.');
-await page.waitForFunction(() => window.__flow.state === 'playing', null, { timeout: 15000 });
+await page.waitForFunction(() => window.__flow.state === 'playing', null, { timeout: 90000 });
 await wait(400);
 await shot('hud-round-start', 'First seconds of a Downtown round: full HUD with the control hint still up.', 'Score bar, timer, radial hub, ammo panel, crosshair, hint: hierarchy and contrast.');
 await run(`const ui = window.__ui; ui.radial.el.classList.add('open'); ui.radial.el.querySelectorAll('.radial-seg')[5].classList.add('hl');`);

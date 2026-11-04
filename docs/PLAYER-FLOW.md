@@ -31,8 +31,8 @@ What each screen does:
 - **Start menu**: title, PLAY / LEADERBOARD / SETTINGS / CREDITS, and a "best" strip with the top score on record. A synth music loop plays on every screen outside the round (it starts after the first click, as browsers require).
 - **Phones and tablets** get a "desktop only" notice instead of the game.
 - **World picker**: three theme cards (name, description, top score), a seed field with a dice button. Clicking a card rebuilds the arena behind the screen so you see what you picked.
-- **Loadout**: the eight slots with spinning models, ammo and role, plus the arena's total points standing and the round length. FIXED KIT is the default; POINT-BUY opens a 128-point budget where every slot has +/− buttons with a price per round, plus a STICKY GRENADES upgrade. Point-buy rounds score on their own leaderboard. DEPLOY.
-- **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad, with a one-line control hint that stays for the first few seconds of the round.
+- **Loadout**: eight filled cards with spinning voxel models (hands included), ammo and role, the arena's total points standing and the round length, and a CONTROLS row of key chips (the only place the bindings are shown). FIXED KIT is the default; POINT-BUY opens a 128-point budget where every slot has +/− buttons with a price per round, plus a STICKY GRENADES upgrade. Point-buy rounds score on their own leaderboard. DEPLOY.
+- **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad. There is no hint during the round.
 - **Pause**: Esc releases the mouse; RESUME / SETTINGS (sensitivity, volume, FOV, remembered) / QUIT TO MENU.
 - **Results**: a 1.5 s slow-motion freeze, then structures leveled, voxels destroyed, biggest chain, arena wrecked and the final score count up. Says whether you made the top 100 or how many more points you needed.
 - **Initials**: three arcade letter columns. Type, or use the arrows; ENTER submits.
@@ -59,11 +59,14 @@ flowchart TD
 
 ## The HUD
 
-- **Top**: score bar with the running score, the next milestone and a fill racing toward it; it flashes on every hit. A combo badge with a draining ring appears during chains.
-- **Top right**: the clock, red and pulsing under 30 s.
-- **Bottom left**: the current weapon's slot number and name. Holding Q fans all eight out in a circle, mouse direction highlights one, release selects it; the game runs at 30 % speed while it is open.
-- **Bottom right**: magazine and reserve, a reload bar, grenade and C4 pips, "N ARMED" while C4 charges are placed. Red when empty.
-- **Centre bottom**: structure readout for 3 s after a hit ("GAS STATION 78 % · 1,240 pts") and a LEVELED stamp.
+Every element sits on its own dark plate with a cyan rule, anchored to a screen edge; nothing floats and nothing is dimmed.
+
+- **Top edge, centred**: score bar flush with the top: running score, the next milestone and a fill racing toward it; it flashes on every hit. A combo badge with a draining ring appears during chains.
+- **Top-right corner**: the clock, flush in the corner, red and pulsing under 30 s.
+- **Bottom-left corner**: the current weapon's slot number and name on a corner plate. Holding Q dims the view and fans all eight weapons out on a wide ring, mouse direction highlights one, release selects it; the game runs at 30 % speed while it is open.
+- **Bottom-right corner**: a quarter-circle plate with the weapon name, magazine and reserve, a reload bar, grenade and C4 pips, "N ARMED" while C4 charges are placed. Red when empty.
+- **Bottom edge, centred**: structure readout plate for 3 s after a hit ("GAS STATION 78 % · 1,240 pts") with the LEVELED stamp above it.
+- **Bottom band**: milestone callouts ("WRECKING +1 GRENADE") slide up along the bottom of the screen, out of the view; the screen flash is faint.
 - **Centre**: crosshair that spreads for the shotgun and tightens while aiming; a hit marker ticks on every destroyed block.
 
 ## Wrecking something
@@ -213,6 +216,8 @@ Mechanics from SPEC.md that do not exist for the player at this commit:
 
 
 ## Changelog
+
+- 2026-11-04: Visual overhaul — 25 cm voxels in a 96 m arena, detailed structures and props, road markings and terrain variety, weapons with hands, neon UI with every HUD element on an anchored plate, controls on the loadout screen, dusk skies
 
 - 2026-11-04: milestone bursts quiet after three callouts
 - 2026-11-04: debris settles into craters

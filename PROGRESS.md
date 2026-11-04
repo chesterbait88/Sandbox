@@ -1,5 +1,12 @@
 # Progress
 
+## Visual overhaul (done; user review of the gallery)
+- Done: voxel 0.5 → 0.25 m in a 96 × 40 × 96 m arena (720 chunks); every metre↔voxel factor from `VOXEL_SIZE` (the recipe context's hardcoded ×2 was a bug); siting constants in metres; all 14 recipes re-authored in metres with 0.25 m detail plus nine prop types (cars, trees, lamp posts, cactus, boulders, signs, dumpsters, hydrants, benches) placed after the structures; road centre/edge lines, kerbs and lane dashes, rock/dark sand/dry grass/flower beds; outline/bevel/hatch scaled per surface class (terrain faint, structures full, weapon in hand solid); eight weapon models with hands on a 1.25 cm canvas; neon UI (cyan/magenta/acid on near-black, no grey text, straight buttons) with every HUD element on a plate anchored to an edge or corner, structure readout and callouts along the bottom, controls on the loadout screen instead of an in-round hint; dusk skies per theme. Material values are per half-metre block so arena totals stay in range (desert ≈ 41k, downtown ≈ 66k, park ≈ 15k).
+- Next: a hands-on pass in a real browser (GPU fps with 720 chunks, the dusk lighting on a real display, weapon pose feel). Candidate: non-cubic mesh regions in the mesher so the 66-deep weapon models mesh faster at boot.
+- Blockers: none. 32 tests, `pnpm diagrams`, e2e round and the gallery all green.
+- FPS / timing (headless CPU, SwiftShader, so render time is not representative): world gen + first mesh of 720 chunks ≈ 3.4 ms per chunk in the workers; pure C4 carve 1.6 ms in node for 14k voxels; in the browser a C4 in an office block (~4k voxels) costs ≈ 23 ms including handlers, Rapier 1–2 ms/frame with one 17–34 ms step while debris inserts, collapse check 16–46 ms on its worker plus ≈ 11 ms to copy the box out, milestone callout ≈ 10 ms, worst frame in the 2 s after the blast ≈ 50 ms (was 70–100 ms before the perf commit, 7–10 ms at 0.5 m). The budget is not met in this sandbox; real hardware is several times faster, to be confirmed hands-on.
+- Open decisions: see DECISIONS.md ("Visual overhaul" onward). `OVERHAUL.md` was the working brief and is now folded into DECISIONS.md and this entry.
+
 ## Visual review gallery
 - `pnpm gallery` writes 74 JPEGs plus `INDEX.md` to `screenshots/gallery/` (committed): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
 
@@ -7,12 +14,12 @@
 
 **Works** (verified headless with Vitest, a DOM-driven end-to-end round and Playwright screenshots; see the phase sections below for details):
 - Menu → world picker (3 themes, seed, dice, live arena behind) → loadout (fixed kit or 128-point point-buy with sticky grenades) → countdown → 3-minute round → slow-mo → results → initials → leaderboard (per theme, ALL, POINT-BUY; rows replay their arena; share links) → play again.
-- Hand-written voxel engine: 8.4 M voxels, greedy mesher with AO in two Workers, per-voxel outline/bevel/hatch shader, arcade palette with hazard-striped volatiles.
-- Three arenas with 14 structure types sited contextually (roadside, blocks, sidewalks, paths, hills, centre, edge), deterministic per seed.
+- Hand-written voxel engine: 23.6 M voxels at 0.25 m, greedy mesher with AO in two Workers (uniform chunks skipped), per-voxel outline/bevel/hatch shader scaled per surface class, arcade palette with hazard-striped volatiles.
+- Three 96 m arenas with 14 detailed structure types sited contextually (roadside, blocks, sidewalks, paths, hills, centre, edge) plus nine prop types, road markings and terrain variety, deterministic per seed.
 - Eight weapons through one damage path; chain reactions; Rapier debris that bounces off walls and settles into craters; structural collapse of unsupported clusters; shake, flash, sparks, synthesized sound and menu music.
 - Scoring with combos, leveled bonuses and dripped milestones; HUD; settings persisted.
 - Server: SQLite under `DATA_DIR`, HMAC single-use sessions, time window, score caps, profanity filter, rate limit, cache; forged, early, oversized and replayed scores rejected; scores survive restarts.
-- `pnpm install && pnpm build && pnpm start` from a clean checkout (verified), `pnpm test` (29 tests), `pnpm screenshots`, `pnpm diagrams`, `node scripts/dev/e2e.mjs`.
+- `pnpm install && pnpm build && pnpm start` from a clean checkout (verified), `pnpm test` (32 tests), `pnpm screenshots`, `pnpm gallery`, `pnpm diagrams`, `node scripts/dev/e2e.mjs`.
 
 **Does not work / not verified here:**
 - Anything needing a real GPU, pointer lock or speakers was not exercised by a human: mouse look, aiming feel, audio levels, real frame rate. The controller, weapons and audio code paths were driven headlessly.
