@@ -52,7 +52,7 @@ SCORE_SECRET=change-me docker compose up --build
 
 `docker-compose.yml` exposes port 8080 and keeps scores in the `scores` volume. The container's health check hits `/api/health`.
 
-> The Docker build is written to the spec but was not exercised in the environment this was built in (no Docker daemon). `pnpm build && pnpm start` is the same thing without the container.
+The image was built and run during development: `/api/health`, the client, a session and a score all answered, and the score survived a container restart on the `/data` volume. (`docker compose up --build` is the same build plus the volume and env wiring.)
 
 ## How the leaderboard stays honest
 

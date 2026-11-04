@@ -14,7 +14,7 @@
 **Does not work / not verified here:**
 - Anything needing a real GPU, pointer lock or speakers was not exercised by a human: mouse look, aiming feel, audio levels, real frame rate. The controller, weapons and audio code paths were driven headlessly.
 - Debris passes through glass (no collider for transparent faces).
-- Docker: see the line below this list, updated after the build attempt.
+- `docker compose` itself was not run (the build sandbox's registry access was rate limited), but the same Dockerfile was built with `docker build` and run with a `/data` volume: health, client, session, score and restart persistence all verified. Image is 234 MB.
 
 **Measured numbers** (headless Chromium on the sandbox CPU, software GL, so GPU-bound fps is unknown):
 - Mesher: 2.7–4 ms per 32³ chunk in a Worker; world generation 80–150 ms in a Worker.
@@ -41,7 +41,7 @@
 ## Phase 5 — server + deploy (done)
 - Done: SQLite (`better-sqlite3`, WAL) under `DATA_DIR`, HMAC session tokens (`SCORE_SECRET`), validation (initials regex + profanity → `???`, 150–600 s window, per-theme score cap, single-use nonces), per-IP rate limit on sessions, 5 s leaderboard cache, IP hash only; 8 server tests (token tamper, validation, forged/early/replayed/implausible rejections, rate limit, qualifies, cache); README with run/deploy/env; Dockerfile + compose written (untested: no daemon here). Verified by hand: forged `curl` → 403, oversized score → 400, replay → 403, and a real score is still on the leaderboard after killing and restarting the server with the same `DATA_DIR`.
 - Next: phase 6 polish (transitions, number ticks, hit markers, muzzle flash, weapon bob exist; add menu music loop, theme sky/fog, aim zoom, favicon/OpenGraph, desktop-only notice, loadout model size, misc).
-- Blockers: Docker build unverified in this sandbox.
+- Blockers: none (Docker image later built and run successfully; see the final state section).
 - FPS / timing: unchanged.
 - Open decisions: see DECISIONS.md.
 
