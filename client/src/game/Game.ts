@@ -42,6 +42,12 @@ export class Game {
   private last = performance.now();
   private ready = false;
   private frameHooks: ((dt: number, now: number) => void)[] = [];
+  /** Decides each frame whether the player controller runs and drives menu cameras. */
+  flow: { update(rawDt: number): boolean; updateFreeze(rawDt: number): void } | null = null;
+  /** Rendering hook after the main pass (loadout model viewports). */
+  afterRender: ((dt: number) => void) | null = null;
+  /** UI hook with unscaled dt and scaled time. */
+  uiUpdate: ((dt: number, now: number) => void) | null = null;
   /** Longest main-thread frame since last reset (ms). */
   worstFrame = 0;
 
@@ -178,9 +184,13 @@ export class Game {
     this.time += dt * 1000;
     const now = this.time;
 
+    const playing = this.flow ? this.flow.update(rawDt) : true;
     if (this.ready) {
-      this.player.look(this.input);
-      this.player.update(dt, this.input);
+      this.uiUpdate?.(rawDt, now);
+      if (playing) {
+        this.player.look(this.input);
+        this.player.update(dt, this.input);
+      }
       this.weapons.update(dt, now, this.input);
       this.destruction.update(now);
       this.score.update(dt);
@@ -190,10 +200,13 @@ export class Game {
       for (const h of this.frameHooks) h(dt, now);
       const hv = Math.hypot(this.player.velocity.x, this.player.velocity.z);
       this.view.update(dt, now, hv > 0.5 && this.player.onGround, hv);
-      this.effects.applyShake(this.gfx.camera);
+      if (playing) this.effects.applyShake(this.gfx.camera);
+      this.flow?.updateFreeze(rawDt);
     }
+    this.view.root.visible = playing;
     this.chunks.update(this.gfx.camera.position);
     this.gfx.render();
+    this.afterRender?.(rawDt);
 
     const frameMs = performance.now() - t0;
     if (frameMs > this.worstFrame) this.worstFrame = frameMs;

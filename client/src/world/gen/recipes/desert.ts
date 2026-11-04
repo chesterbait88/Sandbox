@@ -6,6 +6,7 @@ import type { Recipe } from './types';
 export const gasStation: Recipe = {
   id: 'gasStation',
   name: 'Gas Station',
+  siting: { kind: 'roadside' },
   footprint: (rng) => ({ x: randInt(rng, 36, 44), z: randInt(rng, 30, 36), y: 22 }),
   build(ctx, rng, fp) {
     const pumps = randInt(rng, 2, 4);
@@ -53,6 +54,7 @@ export const gasStation: Recipe = {
 export const diner: Recipe = {
   id: 'diner',
   name: 'Diner',
+  siting: { kind: 'roadside' },
   footprint: (rng) => ({ x: randInt(rng, 32, 44), z: randInt(rng, 14, 18), y: 10 }),
   build(ctx, rng, fp) {
     const x1 = fp.x - 1;
@@ -81,6 +83,7 @@ export const diner: Recipe = {
 export const billboard: Recipe = {
   id: 'billboard',
   name: 'Billboard',
+  siting: { kind: 'roadside' },
   footprint: (rng) => ({ x: randInt(rng, 18, 24), z: 3, y: 24 }),
   build(ctx, rng, fp) {
     const h = randInt(rng, 10, 14);
@@ -97,6 +100,7 @@ export const billboard: Recipe = {
 export const waterTower: Recipe = {
   id: 'waterTower',
   name: 'Water Tower',
+  siting: { kind: 'hill' },
   footprint: () => ({ x: 14, z: 14, y: 30 }),
   build(ctx, rng) {
     const legH = randInt(rng, 14, 18);
@@ -120,6 +124,7 @@ export const waterTower: Recipe = {
 export const propaneCage: Recipe = {
   id: 'propaneCage',
   name: 'Propane Cage',
+  siting: { kind: 'beside', near: ['gasStation', 'diner', 'convenienceStore'] },
   footprint: (rng) => ({ x: randInt(rng, 5, 7), z: randInt(rng, 4, 6), y: 5 }),
   build(ctx, rng, fp) {
     ctx.hollowBox(0, 0, 0, fp.x - 1, 3, fp.z - 1, MAT.STEEL, 1, false, true);

@@ -109,3 +109,27 @@ export const PLACEMENT = {
   /** Grid cell size for jittered placement (m). */
   gridCellM: 36
 } as const;
+
+/** Downtown street grid, in voxels. Blocks are pitch − 2·(streetHalf + sidewalk) wide. */
+export const CITY = {
+  pitch: 64,
+  streetHalf: 8,
+  sidewalk: 4
+} as const;
+
+/** Desert road, in voxels: half width of the asphalt and the shoulder that blends into the dunes. */
+export const ROAD = {
+  halfWidth: 12,
+  shoulder: 6,
+  /** Buildings sit this far (min, max) beyond the shoulder. */
+  setback: [2, 8] as [number, number]
+} as const;
+
+/** Siting tuning. */
+export const SITING = {
+  hillSamples: 24,
+  pathSamples: 60,
+  centerJitter: 16,
+  edgeDepth: [4, 20] as [number, number],
+  besideGap: 2
+} as const;

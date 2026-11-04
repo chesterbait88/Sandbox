@@ -25,7 +25,10 @@ export class StructureCtx {
     private mat: Uint8Array,
     private owner: Uint16Array,
     readonly id: number,
-    readonly origin: { x: number; y: number; z: number }
+    readonly origin: { x: number; y: number; z: number },
+    /** Depth of the footprint in voxels; with `mirror` the recipe's front (z = 0) faces +z instead of −z. */
+    private depth = 0,
+    private mirror = false
   ) {}
 
   /** Helper: metres to voxels. */
@@ -36,7 +39,7 @@ export class StructureCtx {
   set(x: number, y: number, z: number, m: number): void {
     const wx = this.origin.x + x;
     const wy = this.origin.y + y;
-    const wz = this.origin.z + z;
+    const wz = this.origin.z + (this.mirror ? this.depth - 1 - z : z);
     if (wx < 0 || wy < 0 || wz < 0 || wx >= SX || wy >= SY || wz >= SZ) return;
     const i = wx + SX * (wz + SZ * wy);
     const prev = this.mat[i];

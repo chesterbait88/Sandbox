@@ -1,8 +1,9 @@
-import { PLACEMENT, TERRAIN, THEMES, VOXEL_SIZE, WORLD_VOXELS, type ThemeId } from '@vw/config';
+import { CITY, MAT, PLACEMENT, ROAD, SITING, TERRAIN, THEMES, VOXEL_SIZE, WORLD_VOXELS, type ThemeId } from '@vw/config';
 import { randInt, type Rng } from '../../util/rng';
 import type { StructureInfo } from '../World';
 import { StructureCtx } from './StructureCtx';
-import { RECIPES } from './recipes';
+import { RECIPES, type Recipe } from './recipes';
+import type { Footprint, SitingKind } from './recipes/types';
 
 export interface Placed {
   structures: StructureInfo[];
@@ -22,6 +23,21 @@ interface Rect {
   z1: number;
 }
 
+interface Spot {
+  x0: number;
+  z0: number;
+  mirror: boolean;
+  /** Gap to use against taken rects (voxels); defaults to the theme gap. */
+  gap?: number;
+  /** Allowed to come this close to the arena edge (voxels). */
+  margin?: number;
+}
+
+interface PlacedRec {
+  id: string;
+  rect: Rect;
+}
+
 function overlaps(a: Rect, b: Rect, gap: number): boolean {
   return a.x0 - gap < b.x1 && a.x1 + gap > b.x0 && a.z0 - gap < b.z1 && a.z1 + gap > b.z0;
 }
@@ -33,6 +49,7 @@ function stampPad(theme: ThemeId, mat: Uint8Array, height: Int16Array, r: Rect, 
     for (let x = Math.max(0, r.x0); x <= Math.min(SX - 1, r.x1); x++) {
       const cur = height[x + SX * z];
       if (cur === h) continue;
+      const surface = mat[idx(x, cur, z)] || strata[0][0];
       for (let y = h + 1; y <= Math.max(cur, h); y++) mat[idx(x, y, z)] = 0;
       let y = h;
       let si = 0;
@@ -46,11 +63,8 @@ function stampPad(theme: ThemeId, mat: Uint8Array, height: Int16Array, r: Rect, 
           remaining = strata[si][1] / VOXEL_SIZE;
         }
       }
-      // Below the previous surface the strata already exist except for the surface voxel itself.
-      if (cur > h) {
-        // Columns that were cut down: convert the new top voxel to the surface material.
-        mat[idx(x, h, z)] = strata[0][0];
-      }
+      // Keep the surface look (road, sidewalk, path) when the column only moved a little.
+      mat[idx(x, h, z)] = surface;
       height[x + SX * z] = h;
     }
   }
@@ -71,32 +85,148 @@ function reserved(theme: ThemeId): Rect[] {
   const sz = Math.round(PLACEMENT.spawnEdgeM / VOXEL_SIZE);
   list.push({ x0: SX / 2 - pad, z0: 0, x1: SX / 2 + pad, z1: sz + pad });
   if (theme === 'desert') {
-    const half = Math.round(6 / VOXEL_SIZE) + 2;
+    const half = ROAD.halfWidth + ROAD.shoulder;
     list.push({ x0: 0, z0: SZ / 2 - half, x1: SX - 1, z1: SZ / 2 + half });
   }
   return list;
 }
 
+/** Downtown blocks: the lots between sidewalk rings. */
+function cityBlocks(): Rect[] {
+  const inner = CITY.streetHalf + CITY.sidewalk;
+  const list: Rect[] = [];
+  for (let gx = 0; gx < SX; gx += CITY.pitch) for (let gz = 0; gz < SZ; gz += CITY.pitch) list.push({ x0: gx + inner, z0: gz + inner, x1: gx + CITY.pitch - inner - 1, z1: gz + CITY.pitch - inner - 1 });
+  return list;
+}
+
+/** Candidate spots for one siting kind, in priority order. */
+function candidates(
+  kind: SitingKind,
+  near: string[] | undefined,
+  theme: ThemeId,
+  fp: Footprint,
+  rng: Rng,
+  height: Int16Array,
+  mat: Uint8Array,
+  placed: PlacedRec[],
+  cells: { x: number; z: number }[],
+  margin: number
+): Spot[] {
+  const out: Spot[] = [];
+  const rx = (lo: number, hi: number) => lo + Math.floor(rng() * Math.max(1, hi - lo));
+  switch (kind) {
+    case 'roadside': {
+      if (theme !== 'desert') break;
+      const edge = ROAD.halfWidth + ROAD.shoulder;
+      for (let i = 0; i < 12; i++) {
+        const south = rng() < 0.5;
+        const setback = randInt(rng, ROAD.setback[0], ROAD.setback[1]);
+        const x0 = rx(margin, SX - margin - fp.x);
+        if (south) out.push({ x0, z0: SZ / 2 - edge - setback - fp.z, mirror: true });
+        else out.push({ x0, z0: SZ / 2 + edge + setback, mirror: false });
+      }
+      break;
+    }
+    case 'block': {
+      if (theme !== 'downtown') break;
+      const blocks = cityBlocks().sort(() => rng() - 0.5);
+      for (const b of blocks) {
+        const bw = b.x1 - b.x0 + 1;
+        const bd = b.z1 - b.z0 + 1;
+        if (fp.x > bw || fp.z > bd) continue;
+        const x0 = b.x0 + rx(0, bw - fp.x + 1);
+        // Front toward the nearer street: low-z edge, or high-z edge mirrored.
+        if (rng() < 0.5) out.push({ x0, z0: b.z0, mirror: false, margin: 2 });
+        else out.push({ x0, z0: b.z1 - fp.z + 1, mirror: true, margin: 2 });
+      }
+      break;
+    }
+    case 'sidewalk': {
+      if (theme !== 'downtown') break;
+      const inner = CITY.streetHalf + CITY.sidewalk;
+      for (let i = 0; i < 16; i++) {
+        const gz = randInt(rng, 1, Math.floor(SZ / CITY.pitch) - 1) * CITY.pitch;
+        const gx = randInt(rng, 0, Math.floor(SX / CITY.pitch) - 1) * CITY.pitch;
+        const x0 = gx + inner + rx(0, CITY.pitch - 2 * inner - fp.x);
+        if (rng() < 0.5) out.push({ x0, z0: gz + CITY.streetHalf, mirror: false, gap: 2, margin: 2 });
+        else out.push({ x0, z0: gz - CITY.streetHalf - fp.z, mirror: true, gap: 2, margin: 2 });
+      }
+      break;
+    }
+    case 'beside': {
+      const hosts = placed.filter((p) => !near || near.includes(p.id));
+      const pool = hosts.length ? hosts : placed;
+      for (const host of pool.slice().sort(() => rng() - 0.5)) {
+        const g = SITING.besideGap;
+        const z0 = host.rect.z0 + rx(0, Math.max(1, host.rect.z1 - host.rect.z0 - fp.z));
+        out.push({ x0: host.rect.x1 + 1 + g, z0, mirror: false, gap: 0 });
+        out.push({ x0: host.rect.x0 - g - fp.x, z0, mirror: false, gap: 0 });
+      }
+      break;
+    }
+    case 'path': {
+      for (let i = 0; i < SITING.pathSamples; i++) {
+        const x = rx(margin, SX - margin);
+        const z = rx(margin, SZ - margin);
+        const h = height[x + SX * z];
+        if (mat[idx(x, h, z)] === MAT.GRAVEL) out.push({ x0: x - (fp.x >> 1), z0: z - (fp.z >> 1), mirror: false });
+      }
+      break;
+    }
+    case 'hill': {
+      const spots: { x0: number; z0: number; h: number }[] = [];
+      for (let i = 0; i < SITING.hillSamples; i++) {
+        const x0 = rx(margin, SX - margin - fp.x);
+        const z0 = rx(margin, SZ - margin - fp.z);
+        spots.push({ x0, z0, h: padHeight(height, { x0, z0, x1: x0 + fp.x - 1, z1: z0 + fp.z - 1 }) });
+      }
+      spots.sort((a, b) => b.h - a.h);
+      for (const s of spots) out.push({ x0: s.x0, z0: s.z0, mirror: false });
+      break;
+    }
+    case 'center': {
+      for (let i = 0; i < 10; i++) out.push({ x0: SX / 2 - (fp.x >> 1) + randInt(rng, -SITING.centerJitter, SITING.centerJitter), z0: SZ / 2 - (fp.z >> 1) + randInt(rng, -SITING.centerJitter, SITING.centerJitter), mirror: false });
+      break;
+    }
+    case 'edge': {
+      for (let i = 0; i < 12; i++) {
+        const d = randInt(rng, SITING.edgeDepth[0], SITING.edgeDepth[1]);
+        const side = randInt(rng, 0, 2); // never the spawn side
+        if (side === 0) out.push({ x0: margin + d, z0: rx(margin, SZ - margin - fp.z), mirror: false });
+        else if (side === 1) out.push({ x0: SX - margin - d - fp.x, z0: rx(margin, SZ - margin - fp.z), mirror: false });
+        else out.push({ x0: rx(margin, SX - margin - fp.x), z0: SZ - margin - d - fp.z, mirror: true });
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  // Fallback: jittered grid cells then random spots.
+  const cell = Math.round(PLACEMENT.gridCellM / VOXEL_SIZE);
+  for (const c of cells) out.push({ x0: c.x + rx(0, Math.max(1, cell - fp.x)), z0: c.z + rx(0, Math.max(1, cell - fp.z)), mirror: false });
+  for (let i = 0; i < 12; i++) out.push({ x0: rx(margin, SX - margin - fp.x), z0: rx(margin, SZ - margin - fp.z), mirror: rng() < 0.5 });
+  return out;
+}
+
 /**
- * Place 6–10 structures from the theme's pool on a jittered grid with a minimum gap, flattening a
- * pad under each, and clear a spawn pad at the −z edge facing the arena.
+ * Place 6–10 structures from the theme's pool where they belong (see Siting), flattening a pad
+ * under each, and clear a spawn pad at the −z edge facing the arena.
  */
 export function placeStructures(theme: ThemeId, rng: Rng, mat: Uint8Array, owner: Uint16Array, height: Int16Array, terrainOnly: boolean): Placed {
   const def = THEMES[theme];
   const structures: StructureInfo[] = [];
   const taken: Rect[] = reserved(theme);
+  const reservedCount = taken.length;
+  const placed: PlacedRec[] = [];
   const gap = Math.round(def.minGapM / VOXEL_SIZE);
   const margin = Math.round(PLACEMENT.edgeMarginM / VOXEL_SIZE);
   const padMargin = Math.round(TERRAIN.padMarginM / VOXEL_SIZE);
 
-  // Spawn pad.
   const spawnR = taken[0];
-  const spawnH = padHeight(height, spawnR);
-  stampPad(theme, mat, height, spawnR, spawnH);
+  stampPad(theme, mat, height, spawnR, padHeight(height, spawnR));
 
   if (!terrainOnly) {
     const count = randInt(rng, def.structureCount[0], def.structureCount[1]);
-    // Jittered grid cells, shuffled, as first candidates; random spots after.
     const cell = Math.round(PLACEMENT.gridCellM / VOXEL_SIZE);
     const cells: { x: number; z: number }[] = [];
     for (let cx = margin; cx + cell <= SX - margin; cx += cell) for (let cz = margin + gap; cz + cell <= SZ - margin; cz += cell) cells.push({ x: cx, z: cz });
@@ -104,40 +234,38 @@ export function placeStructures(theme: ThemeId, rng: Rng, mat: Uint8Array, owner
       const j = Math.floor(rng() * (i + 1));
       [cells[i], cells[j]] = [cells[j], cells[i]];
     }
-    const pool = def.pool.slice();
+    // Hosts first so 'beside' structures have something to lean on.
+    const order = def.pool.slice().sort((a, b) => (RECIPES[a].siting.kind === 'beside' ? 1 : 0) - (RECIPES[b].siting.kind === 'beside' ? 1 : 0));
     let id = 1;
     for (let n = 0; n < count; n++) {
-      const recipe = RECIPES[pool[n % pool.length]];
+      const recipe: Recipe | undefined = RECIPES[order[n % order.length]];
       if (!recipe) continue;
       const fp = recipe.footprint(rng);
-      let placedRect: Rect | null = null;
-      for (let attempt = 0; attempt < PLACEMENT.maxAttempts && !placedRect; attempt++) {
-        let x0: number;
-        let z0: number;
-        const c = cells[attempt];
-        if (c) {
-          x0 = c.x + Math.floor(rng() * Math.max(1, cell - fp.x));
-          z0 = c.z + Math.floor(rng() * Math.max(1, cell - fp.z));
-        } else {
-          x0 = margin + Math.floor(rng() * (SX - 2 * margin - fp.x));
-          z0 = margin + Math.floor(rng() * (SZ - 2 * margin - fp.z));
-        }
-        const r: Rect = { x0, z0, x1: x0 + fp.x - 1, z1: z0 + fp.z - 1 };
-        if (r.x1 >= SX - margin || r.z1 >= SZ - margin) continue;
-        if (taken.some((t) => overlaps(r, t, gap))) continue;
-        placedRect = r;
+      const spots = candidates(recipe.siting.kind, recipe.siting.near, theme, fp, rng, height, mat, placed, cells, margin);
+      let chosen: Spot | null = null;
+      let rect: Rect | null = null;
+      for (const sp of spots.slice(0, PLACEMENT.maxAttempts)) {
+        const m = sp.margin ?? margin;
+        const r: Rect = { x0: sp.x0, z0: sp.z0, x1: sp.x0 + fp.x - 1, z1: sp.z0 + fp.z - 1 };
+        if (r.x0 < m || r.z0 < m || r.x1 >= SX - m || r.z1 >= SZ - m) continue;
+        const g = sp.gap ?? gap;
+        // The spawn pad keeps the full gap; the road only needs the setback; other structures use the spot's gap.
+        if (taken.some((t, ti) => overlaps(r, t, ti === 0 ? gap : ti < reservedCount ? 0 : g))) continue;
+        chosen = sp;
+        rect = r;
+        break;
       }
-      if (!placedRect) continue;
-      const padRect: Rect = { x0: placedRect.x0 - padMargin, z0: placedRect.z0 - padMargin, x1: placedRect.x1 + padMargin, z1: placedRect.z1 + padMargin };
+      if (!chosen || !rect) continue;
+      const padRect: Rect = { x0: rect.x0 - padMargin, z0: rect.z0 - padMargin, x1: rect.x1 + padMargin, z1: rect.z1 + padMargin };
       const h = Math.min(SY - fp.y - 2, padHeight(height, padRect));
       stampPad(theme, mat, height, padRect, h);
-      const ctx = new StructureCtx(mat, owner, id, { x: placedRect.x0, y: h + 1, z: placedRect.z0 });
+      const ctx = new StructureCtx(mat, owner, id, { x: rect.x0, y: h + 1, z: rect.z0 }, fp.z, chosen.mirror);
       recipe.build(ctx, rng, fp);
       structures.push({ id, name: recipe.name, totalValue: Math.round(ctx.totalValue), center: ctx.center(), voxels: ctx.voxels });
-      taken.push(placedRect);
+      taken.push(rect);
+      placed.push({ id: recipe.id, rect });
       id++;
-      // Shuffle the pool order used by the next pass so counts above the pool size vary.
-      if ((n + 1) % pool.length === 0) pool.sort(() => rng() - 0.5);
+      if ((n + 1) % order.length === 0) order.sort(() => rng() - 0.5);
     }
   }
 

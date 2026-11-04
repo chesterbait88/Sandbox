@@ -6,6 +6,7 @@ import type { Recipe } from './types';
 export const convenienceStore: Recipe = {
   id: 'convenienceStore',
   name: 'Convenience Store',
+  siting: { kind: 'block' },
   footprint: (rng) => ({ x: randInt(rng, 24, 30), z: randInt(rng, 18, 22), y: 10 }),
   build(ctx, rng, fp) {
     const x0 = 6;
@@ -33,6 +34,7 @@ export const convenienceStore: Recipe = {
 export const officeBlock: Recipe = {
   id: 'officeBlock',
   name: 'Office Block',
+  siting: { kind: 'block' },
   footprint: (rng) => ({ x: randInt(rng, 24, 32), z: randInt(rng, 20, 26), y: 40 }),
   build(ctx, rng, fp) {
     const floors = randInt(rng, 3, 5);
@@ -70,7 +72,8 @@ export const officeBlock: Recipe = {
 export const parkingStructure: Recipe = {
   id: 'parkingStructure',
   name: 'Parking Structure',
-  footprint: (rng) => ({ x: randInt(rng, 34, 44), z: randInt(rng, 24, 30), y: 20 }),
+  siting: { kind: 'block' },
+  footprint: (rng) => ({ x: randInt(rng, 28, 36), z: randInt(rng, 22, 30), y: 20 }),
   build(ctx, rng, fp) {
     const decks = randInt(rng, 2, 3);
     const dh = 6;
@@ -94,15 +97,15 @@ export const parkingStructure: Recipe = {
 export const busShelter: Recipe = {
   id: 'busShelter',
   name: 'Bus Shelter',
-  footprint: () => ({ x: 9, z: 5, y: 6 }),
+  siting: { kind: 'sidewalk' },
+  footprint: () => ({ x: 9, z: 4, y: 6 }),
   build(ctx) {
-    ctx.box(0, 0, 0, 8, 0, 4, MAT.CONCRETE_SIDEWALK);
-    for (const [x, z] of [[0, 0], [8, 0], [0, 4], [8, 4]]) ctx.box(x, 1, z, x, 4, z, MAT.STEEL);
-    ctx.box(0, 5, 0, 8, 5, 4, MAT.STEEL);
-    ctx.box(1, 1, 4, 7, 4, 4, MAT.GLASS);
-    ctx.box(0, 1, 1, 0, 4, 3, MAT.GLASS);
-    ctx.box(8, 1, 1, 8, 4, 3, MAT.GLASS);
-    ctx.box(2, 1, 3, 6, 1, 3, MAT.WOOD);
-    ctx.box(1, 2, 4, 3, 3, 4, MAT.NEON);
+    for (const [x, z] of [[0, 0], [8, 0], [0, 3], [8, 3]]) ctx.box(x, 0, z, x, 4, z, MAT.STEEL);
+    ctx.box(0, 5, 0, 8, 5, 3, MAT.STEEL);
+    ctx.box(1, 0, 3, 7, 4, 3, MAT.GLASS);
+    ctx.box(0, 0, 1, 0, 4, 2, MAT.GLASS);
+    ctx.box(8, 0, 1, 8, 4, 2, MAT.GLASS);
+    ctx.box(2, 0, 2, 6, 0, 2, MAT.WOOD);
+    ctx.box(1, 1, 3, 3, 2, 3, MAT.NEON);
   }
 };

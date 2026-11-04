@@ -6,6 +6,7 @@ import type { Recipe } from './types';
 export const monument: Recipe = {
   id: 'monument',
   name: 'Monument',
+  siting: { kind: 'center' },
   footprint: (rng) => ({ x: randInt(rng, 14, 18), z: randInt(rng, 14, 18), y: 30 }),
   build(ctx, rng, fp) {
     const cx = fp.x / 2;
@@ -25,6 +26,7 @@ export const monument: Recipe = {
 export const fountain: Recipe = {
   id: 'fountain',
   name: 'Fountain',
+  siting: { kind: 'path' },
   footprint: (rng) => ({ x: randInt(rng, 16, 20), z: randInt(rng, 16, 20), y: 8 }),
   build(ctx, rng, fp) {
     const cx = fp.x / 2;
@@ -43,6 +45,7 @@ export const fountain: Recipe = {
 export const gazebo: Recipe = {
   id: 'gazebo',
   name: 'Gazebo',
+  siting: { kind: 'hill' },
   footprint: (rng) => ({ x: randInt(rng, 12, 16), z: randInt(rng, 12, 16), y: 14 }),
   build(ctx, _rng, fp) {
     const x1 = fp.x - 1;
@@ -60,6 +63,7 @@ export const gazebo: Recipe = {
 export const statue: Recipe = {
   id: 'statue',
   name: 'Statue',
+  siting: { kind: 'path' },
   footprint: () => ({ x: 10, z: 10, y: 16 }),
   build(ctx, rng) {
     ctx.box(1, 0, 1, 8, 2, 8, MAT.CONCRETE);
@@ -77,6 +81,7 @@ export const statue: Recipe = {
 export const shed: Recipe = {
   id: 'shed',
   name: 'Maintenance Shed',
+  siting: { kind: 'edge' },
   footprint: (rng) => ({ x: randInt(rng, 12, 16), z: randInt(rng, 8, 12), y: 10 }),
   build(ctx, rng, fp) {
     const x1 = fp.x - 1;

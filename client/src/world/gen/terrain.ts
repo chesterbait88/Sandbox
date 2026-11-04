@@ -1,5 +1,5 @@
 import { createNoise2D } from 'simplex-noise';
-import { MAT, TERRAIN, THEMES, VOXEL_SIZE, WORLD_VOXELS, type ThemeId } from '@vw/config';
+import { CITY, ROAD, MAT, TERRAIN, THEMES, VOXEL_SIZE, WORLD_VOXELS, type ThemeId } from '@vw/config';
 import type { Rng } from '../../util/rng';
 
 const SX = WORLD_VOXELS.x;
@@ -52,11 +52,11 @@ export function generateTerrain(theme: ThemeId, rng: Rng, mat: Uint8Array): Terr
 /** Desert: a flat asphalt road through the middle along x. */
 function desertRoad(x: number, z: number, h: number): number {
   const centre = SZ / 2;
-  const halfWidth = 6 / VOXEL_SIZE;
+  const halfWidth = ROAD.halfWidth;
   const d = Math.abs(z - centre);
   if (d < halfWidth) return TERRAIN.baseLevelM / VOXEL_SIZE;
-  if (d < halfWidth + 6) {
-    const t = (d - halfWidth) / 6;
+  if (d < halfWidth + ROAD.shoulder) {
+    const t = (d - halfWidth) / ROAD.shoulder;
     return Math.round(h * t + (TERRAIN.baseLevelM / VOXEL_SIZE) * (1 - t));
   }
   return h;
@@ -65,15 +65,18 @@ function desertRoad(x: number, z: number, h: number): number {
 function surfaceOverride(theme: ThemeId, x: number, z: number, noise: ReturnType<typeof createNoise2D>): number {
   if (theme === 'desert') {
     const d = Math.abs(z - SZ / 2);
-    if (d < 6 / VOXEL_SIZE) return MAT.ASPHALT;
+    if (d < ROAD.halfWidth) return MAT.ASPHALT;
   }
   if (theme === 'downtown') {
-    // Sidewalk strips on a 32 m grid.
-    const g = 32 / VOXEL_SIZE;
-    const mx = x % g;
-    const mz = z % g;
-    const band = 3 / VOXEL_SIZE;
-    if (mx < band || mz < band) return MAT.CONCRETE_SIDEWALK;
+    // Streets on a 32 m grid: 8 m of asphalt centred on each grid line, 2 m sidewalks either side,
+    // 20 m blocks between. See CITY in config.
+    const mx = x % CITY.pitch;
+    const mz = z % CITY.pitch;
+    const onSidewalk = (m: number) => (m >= CITY.streetHalf && m < CITY.streetHalf + CITY.sidewalk) || (m >= CITY.pitch - CITY.streetHalf - CITY.sidewalk && m < CITY.pitch - CITY.streetHalf);
+    const onStreet = (m: number) => m < CITY.streetHalf || m >= CITY.pitch - CITY.streetHalf;
+    if (onStreet(mx) || onStreet(mz)) return MAT.ASPHALT;
+    if (onSidewalk(mx) || onSidewalk(mz)) return MAT.CONCRETE_SIDEWALK;
+    return MAT.ASPHALT;
   }
   if (theme === 'park') {
     // Winding gravel paths from low-frequency noise ridges.
