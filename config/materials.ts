@@ -12,33 +12,36 @@ export interface Material {
   /** Glass: any hit destroys it regardless of energy. */
   shatters?: boolean;
   emissive?: boolean;
-  /** Pattern applied by the mesher. */
-  pattern?: 'brickRows' | 'siding' | 'marble' | 'checker';
+  /** Pattern applied by the mesher. 'stripes' alternates rows of color/color2; 'band' paints every
+   *  fourth row color2; the rest darken or tint the base colour. */
+  pattern?: 'brickRows' | 'siding' | 'marble' | 'checker' | 'stripes' | 'band';
+  /** Second colour for two-tone patterns. */
+  color2?: string;
   /** Secondary explosion when destroyed. */
   volatile?: { power: number; radius: number };
 }
 
 export const MATERIALS: Record<number, Material> = {
-  1: { id: 1, name: 'Grass', color: '#5a9e3c', value: 0, hardness: 1, terrain: true },
-  2: { id: 2, name: 'Dirt', color: '#7a5a3a', value: 0, hardness: 1, terrain: true },
-  3: { id: 3, name: 'Sand', color: '#d9c27e', value: 0, hardness: 1, terrain: true },
-  4: { id: 4, name: 'Stone', color: '#8a8a85', value: 0, hardness: 3, terrain: true },
-  5: { id: 5, name: 'Asphalt', color: '#3a3a3c', value: 0, hardness: 2, terrain: true },
-  6: { id: 6, name: 'Gravel', color: '#a39e92', value: 0, hardness: 1, terrain: true, pattern: 'checker' },
-  8: { id: 8, name: 'Sidewalk', color: '#b5b3aa', value: 0, hardness: 3, terrain: true },
-  7: { id: 7, name: 'Water', color: '#4a90c8', value: 0, hardness: 1, terrain: true, transparent: true },
-  10: { id: 10, name: 'Glass', color: '#a8d8f0', value: 1, hardness: 1, transparent: true, shatters: true },
-  11: { id: 11, name: 'Wood', color: '#a06b3c', value: 2, hardness: 2, pattern: 'siding' },
-  12: { id: 12, name: 'Drywall', color: '#e8e4da', value: 1, hardness: 1 },
-  13: { id: 13, name: 'Brick', color: '#9b4a35', value: 3, hardness: 3, pattern: 'brickRows' },
-  14: { id: 14, name: 'Concrete', color: '#9a9a94', value: 5, hardness: 5 },
-  15: { id: 15, name: 'Steel', color: '#6b7280', value: 8, hardness: 8 },
-  16: { id: 16, name: 'Marble', color: '#e6e2d8', value: 6, hardness: 5, pattern: 'marble' },
-  18: { id: 18, name: 'Skin', color: '#e0b090', value: 0, hardness: 1 },
-  17: { id: 17, name: 'Neon', color: '#ff4fa3', value: 2, hardness: 1, emissive: true },
-  20: { id: 20, name: 'Fuel tank', color: '#c0392b', value: 4, hardness: 2, volatile: { power: 60, radius: 5 } },
-  21: { id: 21, name: 'Propane', color: '#e0e0e0', value: 3, hardness: 1, volatile: { power: 35, radius: 3 } },
-  22: { id: 22, name: 'Transformer', color: '#4a5568', value: 5, hardness: 3, volatile: { power: 25, radius: 2.5 } }
+  1: { id: 1, name: 'Grass', color: '#5fc94a', value: 0, hardness: 1, terrain: true },
+  2: { id: 2, name: 'Dirt', color: '#9a6239', value: 0, hardness: 1, terrain: true },
+  3: { id: 3, name: 'Sand', color: '#f2d27c', value: 0, hardness: 1, terrain: true },
+  4: { id: 4, name: 'Stone', color: '#7c8697', value: 0, hardness: 3, terrain: true },
+  5: { id: 5, name: 'Asphalt', color: '#2f3342', value: 0, hardness: 2, terrain: true },
+  6: { id: 6, name: 'Gravel', color: '#b9ac96', value: 0, hardness: 1, terrain: true, pattern: 'checker' },
+  8: { id: 8, name: 'Sidewalk', color: '#cfc6b2', value: 0, hardness: 3, terrain: true },
+  7: { id: 7, name: 'Water', color: '#36b4f0', value: 0, hardness: 1, terrain: true, transparent: true },
+  10: { id: 10, name: 'Glass', color: '#86ecff', value: 1, hardness: 1, transparent: true, shatters: true },
+  11: { id: 11, name: 'Wood', color: '#e0862e', value: 2, hardness: 2, pattern: 'siding' },
+  12: { id: 12, name: 'Drywall', color: '#fff3c4', value: 1, hardness: 1 },
+  13: { id: 13, name: 'Brick', color: '#e84e2c', value: 3, hardness: 3, pattern: 'brickRows' },
+  14: { id: 14, name: 'Concrete', color: '#aab4c6', value: 5, hardness: 5 },
+  15: { id: 15, name: 'Steel', color: '#4f7ad6', value: 8, hardness: 8 },
+  16: { id: 16, name: 'Marble', color: '#fbeef4', value: 6, hardness: 5, pattern: 'marble' },
+  18: { id: 18, name: 'Skin', color: '#f0b88a', value: 0, hardness: 1 },
+  17: { id: 17, name: 'Neon', color: '#ff3fa4', value: 2, hardness: 1, emissive: true },
+  20: { id: 20, name: 'Fuel tank', color: '#ff2e3b', value: 4, hardness: 2, pattern: 'stripes', color2: '#ffd400', volatile: { power: 60, radius: 5 } },
+  21: { id: 21, name: 'Propane', color: '#f4fff8', value: 3, hardness: 1, pattern: 'band', color2: '#19d3a0', volatile: { power: 35, radius: 3 } },
+  22: { id: 22, name: 'Transformer', color: '#5a46e0', value: 5, hardness: 3, pattern: 'band', color2: '#ffd400', volatile: { power: 25, radius: 2.5 } }
 };
 
 export const MAT = {
@@ -69,7 +72,7 @@ export const MAX_MATERIAL_ID = 32;
 
 /** Pattern tuning */
 export const PATTERNS = {
-  brickDarken: 0.12,
+  brickDarken: 0.18,
   sidingDarken: 0.08,
   marbleTint: 0.08,
   checkerDarken: 0.06

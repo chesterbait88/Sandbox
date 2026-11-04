@@ -4,8 +4,7 @@ import { DEBRIS, MATERIALS, VOXEL_SIZE } from '@vw/config';
 import type { Vec3 } from '../util/vec';
 import type { Destroyed } from '../state/events';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
-import { hexToRgb } from '../util/color';
-import { patternFactor } from '../world/mesher';
+import { voxelColor } from '../world/mesher';
 import { createOpaqueMaterial } from '../world/VoxelMaterial';
 
 interface Piece {
@@ -26,7 +25,6 @@ export class Debris {
   private dummy = new THREE.Object3D();
   private color = new THREE.Color();
   private now = 0;
-  private rgb: [number, number, number][] = [];
 
   constructor(private physics: PhysicsWorld) {
     const geo = new THREE.BoxGeometry(1, 1, 1);
@@ -42,7 +40,6 @@ export class Debris {
     this.mesh.castShadow = true;
     this.mesh.frustumCulled = false;
     for (let i = DEBRIS.cap - 1; i >= 0; i--) this.freeSlots.push(i);
-    for (let i = 0; i < 256; i++) this.rgb[i] = MATERIALS[i] ? hexToRgb(MATERIALS[i].color) : [255, 0, 255];
     // Initialise instance colours so the attribute exists.
     for (let i = 0; i < DEBRIS.cap; i++) this.mesh.setColorAt(i, this.color.setRGB(1, 1, 1));
   }
@@ -86,9 +83,8 @@ export class Debris {
         const s = power * DEBRIS.impulseScale * jitter;
         body.setLinvel({ x: dx * s, y: dy * s, z: dz * s }, true);
         body.setAngvel({ x: (Math.random() - 0.5) * DEBRIS.spinMax, y: (Math.random() - 0.5) * DEBRIS.spinMax, z: (Math.random() - 0.5) * DEBRIS.spinMax }, true);
-        const f = patternFactor(v.mat, v.x, v.y, v.z);
-        const c = this.rgb[v.mat];
-        this.mesh.setColorAt(slot, this.color.setRGB((c[0] * f) / 255, (c[1] * f) / 255, (c[2] * f) / 255));
+        const c = voxelColor(v.mat, v.x, v.y, v.z);
+        this.mesh.setColorAt(slot, this.color.setRGB(c[0] / 255, c[1] / 255, c[2] / 255));
         this.pieces.push({ body, born: this.now, size, slot });
       }
     }

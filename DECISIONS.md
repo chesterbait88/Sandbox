@@ -22,3 +22,4 @@
 - **Counts above the pool size repeat recipes** (e.g. two gas stations) after reshuffling the pool, since the spec asks for 6–10 structures from pools of 4–5.
 - **Water tower holds water and the fountain has water**: material 7 (terrain-valued, transparent) so it reads as water but pays nothing.
 - **The milestone `time` reward is emitted but applied by nothing until the round clock exists (phase 4).**
+- **Arcade palette (user request after phase 3).** Structure materials were re-coloured to distinct saturated hues (blue steel, red-orange brick, orange wood, cream drywall, cool concrete, pink-white marble) and volatile materials got two-tone patterns: fuel tanks are red/yellow hazard stripes, propane and transformers carry a colour band, so the explosive things read at a glance. Terrain got slightly more saturated too. All of it is data in `materials.ts` (`color2` + `stripes`/`band` patterns).

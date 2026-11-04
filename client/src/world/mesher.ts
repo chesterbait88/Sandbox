@@ -32,15 +32,27 @@ export interface MeshOptions {
 }
 
 const baseRgb: [number, number, number][] = [];
+const altRgb: ([number, number, number] | null)[] = [];
 const transparentMat = new Uint8Array(MAX_MATERIAL_ID + 1);
 const emissiveMat = new Uint8Array(MAX_MATERIAL_ID + 1);
 const patternMat: (string | undefined)[] = [];
 for (let i = 0; i <= MAX_MATERIAL_ID; i++) {
   const m = MATERIALS[i];
   baseRgb[i] = m ? hexToRgb(m.color) : [255, 0, 255];
+  altRgb[i] = m?.color2 ? hexToRgb(m.color2) : null;
   transparentMat[i] = m?.transparent ? 1 : 0;
   emissiveMat[i] = m?.emissive ? 1 : 0;
   patternMat[i] = m?.pattern;
+}
+
+/** Final RGB for a voxel: base or second colour by pattern, times the brightness factor. */
+export function voxelColor(mat: number, x: number, y: number, z: number): [number, number, number] {
+  const alt = altRgb[mat];
+  const p = patternMat[mat];
+  let base = baseRgb[mat];
+  if (alt && ((p === 'stripes' && (y & 1) === 1) || (p === 'band' && (y & 3) === 2))) base = alt;
+  const f = patternFactor(mat, x, y, z);
+  return [Math.min(255, (base[0] * f) | 0), Math.min(255, (base[1] * f) | 0), Math.min(255, (base[2] * f) | 0)];
 }
 
 /** Pattern brightness multiplier for a voxel at world voxel coords. */
@@ -143,11 +155,7 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
             const val = s1 && s2 ? 0 : 3 - (s1 + s2 + s3);
             ao |= val << (c * 2);
           }
-          const f = patternFactor(faceMat, vx + opts.ox, vy + opts.oy, vz + opts.oz);
-          const base = baseRgb[faceMat];
-          const r = Math.min(255, (base[0] * f) | 0);
-          const g = Math.min(255, (base[1] * f) | 0);
-          const bl = Math.min(255, (base[2] * f) | 0);
+          const [r, g, bl] = voxelColor(faceMat, vx + opts.ox, vy + opts.oy, vz + opts.oz);
           maskColor[n] = (r << 16) | (g << 8) | bl;
           maskAO[n] = ao;
           maskDir[n] = dir;
