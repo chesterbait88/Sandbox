@@ -25,7 +25,7 @@ export const convenienceStore: Recipe = {
     ctx.box(x1 - 6, 1, z1 - 1, x1 - 6, 5, z1 - 1, MAT.DRYWALL);
     ctx.box(x1 - 2, 1, z1 - 2, x1 - 1, 3, z1 - 1, MAT.TRANSFORMER);
     // Propane cage out front, left of the door.
-    ctx.hollowBox(0, 0, 1, 4, 3, 4, MAT.STEEL, 1, false, true);
+    ctx.cage(0, 0, 1, 4, 3, 4, MAT.STEEL);
     for (let x = 1; x < 4; x++) for (let z = 2; z < 4; z++) if (rng() > 0.3) ctx.box(x, 0, z, x, 1, z, MAT.PROPANE);
   }
 };

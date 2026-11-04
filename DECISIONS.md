@@ -45,3 +45,4 @@
 - **Point-buy budget is 128**, exactly the cost of the fixed kit at the per-round prices in `config/loadout.ts`; the server signs the mode into the session token so a client cannot post a point-buy score to the fixed board.
 - **Share links use `?arena=theme-SEED`**; `?theme`/`?seed` remain debug parameters so screenshots and probes keep landing on the menu.
 - **Band pattern is odd rows** (was every fourth row): a 2-voxel propane bottle never showed its colour band. Found via the visual gallery.
+- **Propane cages are lattices** (corner posts, solid roof, checkered bars) instead of solid steel boxes, so the bottles inside are visible and shootable. Found via the visual gallery.

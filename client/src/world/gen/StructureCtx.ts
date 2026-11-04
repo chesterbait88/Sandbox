@@ -82,6 +82,19 @@ export class StructureCtx {
         }
   }
 
+  /** A cage: solid corner posts and roof, checkered bars for the walls so the contents show through. */
+  cage(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, m: number): void {
+    for (let y = y0; y <= y1; y++)
+      for (let z = z0; z <= z1; z++)
+        for (let x = x0; x <= x1; x++) {
+          const wall = x === x0 || x === x1 || z === z0 || z === z1;
+          if (!wall) continue;
+          const post = (x === x0 || x === x1) && (z === z0 || z === z1);
+          const roof = y === y1;
+          if (post || roof || ((x + y + z) & 1) === 0) this.set(x, y, z, m);
+        }
+  }
+
   /** Vertical cylinder of radius r (voxels) centred at (cx, cz), from y0 to y1 inclusive. */
   cylinder(cx: number, cz: number, r: number, y0: number, y1: number, m: number, hollow = 0): void {
     const r2 = r * r;

@@ -45,7 +45,7 @@ export const gasStation: Recipe = {
     ctx.box(sgx - 4, 15, 0, sgx + 1, 19, 0, MAT.NEON);
     ctx.box(sgx - 3, 16, 0, sgx, 18, 0, MAT.DRYWALL);
     // Propane cage out front.
-    ctx.hollowBox(0, 0, 0, 3, 3, 3, MAT.STEEL, 1, false, true);
+    ctx.cage(0, 0, 0, 3, 3, 3, MAT.STEEL);
     for (let i = 0; i < 3; i++) ctx.box(1 + (i % 2), 0, 1 + Math.floor(i / 2), 1 + (i % 2), 1, 1 + Math.floor(i / 2), MAT.PROPANE);
   }
 };
@@ -127,7 +127,7 @@ export const propaneCage: Recipe = {
   siting: { kind: 'beside', near: ['gasStation', 'diner', 'convenienceStore'] },
   footprint: (rng) => ({ x: randInt(rng, 5, 7), z: randInt(rng, 4, 6), y: 5 }),
   build(ctx, rng, fp) {
-    ctx.hollowBox(0, 0, 0, fp.x - 1, 3, fp.z - 1, MAT.STEEL, 1, false, true);
+    ctx.cage(0, 0, 0, fp.x - 1, 3, fp.z - 1, MAT.STEEL);
     for (let x = 1; x < fp.x - 1; x++) for (let z = 1; z < fp.z - 1; z++) if (rng() > 0.25) ctx.box(x, 0, z, x, 1, z, MAT.PROPANE);
   }
 };
