@@ -9,3 +9,9 @@
 
 ## Phase 0 — scaffold (done)
 - pnpm workspace, Vite+TS+Three.js, Hono server, Vitest, Playwright screenshots. Docker deferred.
+
+## State at pause (wip: pause for living docs)
+- Phase: 2 (Destruction) in progress; phases 0 and 1 gates committed.
+- Works right now: `pnpm dev`/`pnpm build && pnpm start` serve a page that generates a Desert Highway world from `?theme&seed`, meshes it in Workers and lets you walk it in first person with pointer lock (WASD, Shift, Space, F3 debug). Server answers `/api/health` only.
+- Half-done (written, typechecked, unit-tested, but not wired into the running game): `Destruction.applyDamage` with the volatile chain queue, `PhysicsWorld` (Rapier init + terrain heightfield), `Debris` (InstancedMesh + Rapier cuboids), typed `events` emitter. Nothing in `main.ts` calls them yet.
+- Not started: weapons/input firing, projectiles, effects (shake/flash/particles), synth audio, view models, structures/recipes/placer (placer is a spawn-pad stub), scoring, game state machine, all UI screens and HUD, server session/score/leaderboard API, SQLite.

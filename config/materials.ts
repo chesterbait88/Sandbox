@@ -78,8 +78,8 @@ export const PATTERNS = {
 export const VOLATILE = {
   /** Delay between a tank being destroyed and its detonation (ms). */
   chainDelayMs: 150,
-  /** Only one detonation per this radius (m) of volatile voxels. */
-  dedupeRadiusM: 1
+  /** Only one detonation per this radius (m) of volatile voxels (tanks are up to 2 m long). */
+  dedupeRadiusM: 2
 } as const;
 
 export function materialOf(id: number): Material | undefined {

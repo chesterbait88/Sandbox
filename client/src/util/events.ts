@@ -1,5 +1,5 @@
 /** Tiny typed event emitter. Gameplay emits; UI and audio subscribe. */
-export class Emitter<T extends Record<string, unknown>> {
+export class Emitter<T extends object> {
   private handlers: { [K in keyof T]?: Array<(payload: T[K]) => void> } = {};
 
   on<K extends keyof T>(name: K, fn: (payload: T[K]) => void): () => void {

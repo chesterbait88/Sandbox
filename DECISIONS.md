@@ -8,3 +8,4 @@
 - **Per-voxel colour jitter is applied in the fragment shader** from world position (stable across remeshes) rather than baked per vertex, so greedy merging still works. AO is baked into vertex colour; neon uses an `emit` vertex attribute instead of a third mesh.
 - **Sidewalk** (id 8) was added as a terrain-valued concrete look-alike so Downtown sidewalks score nothing.
 - **FPS claims**: the sandbox has no GPU; frame timing is measured for CPU-side work (mesher, controller, damage) and the GPU budget is kept by construction (few hundred draw calls, vertex colours only).
+- **Volatile dedupe radius is 2 m** (spec said 1 m): a 1×1×2 m fuel tank detonated twice at 1 m. One detonation per tank is the intent.
