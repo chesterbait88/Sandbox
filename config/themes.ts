@@ -83,16 +83,17 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     propCount: [12, 18],
     structureCount: [7, 10],
     minGapM: 6,
-    // Blue hour: deep sky, cool haze, warm sodium-tinted key light so the neon signs carry.
-    sky: '#152452',
-    horizon: '#5c7fd6',
-    fog: '#3b508f',
+    // Blue hour: deep sky, cool haze, warm sodium-tinted key light so the neon signs carry,
+    // lit well enough that glass, concrete and asphalt still read as three materials.
+    sky: '#1d3677',
+    horizon: '#8fb0ff',
+    fog: '#4b67b0',
     sun: '#ffe2b8',
-    fogDensity: 0.0055,
-    hemiGround: '#2a1d3f',
+    fogDensity: 0.0042,
+    hemiGround: '#3a2e5a',
     sunDir: [0.6, 0.7, 0.35],
-    sunMul: 0.95,
-    hemiMul: 1.25,
+    sunMul: 1.3,
+    hemiMul: 1.7,
     accent: '#22f4ff'
   },
   park: {

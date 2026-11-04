@@ -114,7 +114,12 @@ await run(`window.__vw.weapons.select(2);`);
 // Armed C4 on a wall
 await run(`
   const g = window.__vw; const V = window.__gal.V; const s = window.__gal.struct('Office Block'); const b = s.bounds;
-  g.player.position.set((b.x0 + b.x1 + 1) * V / 2, b.y0 * V, b.z0 * V - 2.2); g.player.yaw = Math.PI; g.player.pitch = -0.05; g.player.updateCamera();
+  // Stand well outside the low-z face looking at the block, then walk up to 2 m from the first wall the crosshair finds.
+  const cx = (b.x0 + b.x1 + 1) * V / 2; const z = b.z0 * V - 6;
+  g.player.position.set(cx, window.__gal.ground(cx, z) - V, z); g.player.yaw = Math.PI; g.player.pitch = 0; g.player.updateCamera();
+  const hit = g.world.raycast(g.player.eye(), g.player.forward(), 40);
+  if (hit && hit.dist > 2.2) { g.player.position.z += hit.dist - 2.2; g.player.updateCamera(); }
+  g.player.pitch = -0.05; g.player.updateCamera();
   g.weapons.select(7); for (let i = 0; i < 3; i++) { g.weapons.active.cooldown = 0; g.player.yaw = Math.PI + (i - 1) * 0.35; g.player.updateCamera(); g.weapons.fire(g.weapons.active); }
   g.player.yaw = Math.PI; g.player.updateCamera();`);
 await wait(500);

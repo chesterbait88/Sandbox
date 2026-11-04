@@ -126,7 +126,7 @@ button, input { font-family: inherit; }
 .score-track { height: 14px; background: #04060c; border: 1px solid var(--cyan-30); overflow: hidden; }
 .score-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--magenta)); transition: width .25s ease-out; box-shadow: 0 0 12px var(--cyan); }
 .score-next { font-family: var(--display); font-size: 22px; color: var(--cyan); letter-spacing: 1px; }
-.combo { position: absolute; right: -96px; top: 50%; transform: translateY(-50%) scale(0); width: 78px; height: 78px; display: grid; place-items: center; transition: transform .2s cubic-bezier(.2,1.6,.4,1); }
+.combo { position: absolute; left: -96px; top: 50%; transform: translateY(-50%) scale(0); width: 78px; height: 78px; display: grid; place-items: center; transition: transform .2s cubic-bezier(.2,1.6,.4,1); }
 .combo.on { transform: translateY(-50%) scale(1); }
 .combo.pop { animation: comboPop .3s ease-out; }
 @keyframes comboPop { 0% { transform: translateY(-50%) scale(1.5) } 100% { transform: translateY(-50%) scale(1) } }
