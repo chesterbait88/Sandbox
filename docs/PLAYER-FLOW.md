@@ -177,31 +177,32 @@ Everyone carries the same eight slots. Ammo is for the whole round; nothing refi
 
 ```mermaid
 mindmap
-  root((Arena 128 m square))
+  root((Arena 96 m square, 25 cm voxels))
     Desert Highway
-      Dunes, road, stone below
-      Gas Station: canopy, pumps on fuel tanks, store, neon sign, propane cage
-      Diner: brick base, glass band, neon trim, propane in the kitchen
-      Billboard: steel posts, wood face, neon letters
-      Water Tower: steel legs and tank
-      Propane Cage
+      Dunes with rock faces and dark hollows, a road with yellow centre and white edge lines
+      Gas Station: canopy, pump islands with hoses on fuel tanks, glazed store, pole sign, propane cage
+      Diner: brick base, mullioned glass band, neon trim, booths, propane in the kitchen
+      Billboard: braced posts, catwalk, lit panel with neon letters
+      Water Tower: braced legs, ladder, catwalk, riveted tank
+      Props: cars, cacti, boulders, road signs
     Downtown
-      Flat asphalt, sidewalk grid
-      Convenience Store: glass front, drywall shelves, transformer, propane cage
-      Office Block: 3 to 5 floors, concrete frame, glass walls, steel core, alley transformer
-      Parking Structure: open concrete decks
-      Bus Shelter: glass and steel
-      Propane Cage
+      Asphalt streets with kerbs and dashed lanes, sidewalk rings
+      Convenience Store: glazed front, awning, shelves, transformer, propane cage
+      Office Block: 3 to 5 floors, column grid, curtain wall, lobby, core, alley transformer
+      Parking Structure: decks with parked cars, stair tower, pay booth
+      Bus Shelter: glass, bench, lit ad panel
+      Props: lamp posts, cars, dumpsters, hydrants
     Memorial Park
-      Grass hills, gravel paths
-      Monument: marble pedestal and column, steel core
-      Fountain: marble ring, water
-      Gazebo: wood posts and roof
-      Statue: marble on concrete
-      Maintenance Shed: wood, fuel tank inside
+      Grass hills with dry-grass tops and flower beds, gravel paths
+      Monument: tiered marble, fluted column, bollards and chain
+      Fountain: basin, tiered bowls, jets
+      Gazebo: raised deck, balustrade, stepped roof
+      Statue: figure on a pedestal with a plaque
+      Maintenance Shed: gable roof, workbench, fuel tank and propane inside
+      Props: trees, benches, lamp posts, boulders
 ```
 
-Same theme and seed always build the same arena. Structures never float: each stands on a pad flattened into the terrain. Each theme totals roughly 15,000 (park) to 100,000 (downtown) points.
+Same theme and seed always build the same arena. Structures never float: each stands on a pad flattened into the terrain. Props are scenery you can also wreck for a little; knocking one flat never counts as a leveled structure. Each theme totals roughly 15,000 (park) to 65,000 (downtown) points.
 
 ## Not yet playable
 

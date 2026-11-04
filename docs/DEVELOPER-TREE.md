@@ -210,16 +210,19 @@ sequenceDiagram
     participant W as World
     participant S as Score
     participant P as PhysicsWorld
+    participant U as support.worker
     participant K as mesher.worker
     G->>C: notify(destroyed) on every hit
     G->>C: update(now)
-    C->>C: check(structure): seeds = voxels touching terrain
-    C->>C: flood fill support (6-neighbours)
-    C->>C: unsupported → connected clusters → release queue
-    Note over C: one cluster released per frame
-    C->>W: setVoxel(…, 0) for the cluster
+    C->>W: copy the structure's padded bounding box (mat + owner)
+    C->>U: findUnsupported(box, id)
+    U->>U: seeds = voxels touching terrain or another structure
+    U->>U: flood fill support (6-neighbours)
+    U-->>C: unsupported → connected clusters → release queue
+    Note over C: one cluster released per frame, each voxel re-checked against the live world
+    C->>W: clear the cluster, markDirtyBox(bounds)
     C->>S: onDestroyed(cluster records)
-    C->>P: createClusterBody(convex hull of sampled voxels)
+    C->>P: createClusterBody(box collider of the bounds)
     C->>K: meshArbitrary(padded cube)
     K-->>C: buffers → mesh attached to the falling group
     loop every frame
@@ -542,21 +545,23 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `onmessage(GenRequest)` — terrain + placement, posts arrays
 - `client/src/world/gen/terrain.ts` **[worker]**
   - `generateTerrain(theme, rng, mat) → {height}` — simplex heightmap, strata fill
-  - `desertRoad(x,z,h)`, `surfaceOverride(theme,x,z,noise)`, `fillColumn(...)` — theme overlays
+  - `desertRoad(x,z,h)`, `desertRoadSurface(x,d)`, `downtownSurface(x,z)`, `surfaceOverride(theme,x,z,h,height,noise,detail)`, `slopeAt(x,z,height)`, `fillColumn(...)` — theme overlays: road paint, kerbs, lane dashes, rock on slopes, dark sand, dry grass, flower beds
 - `client/src/world/gen/placer.ts` **[worker]**
-  - `placeStructures(theme, rng, mat, owner, height, terrainOnly) → Placed` — reserves the spawn pad (and the desert road), picks 6–10 recipes from the pool, jittered-grid then random placement with a 10 m gap, stamps pads, builds, returns `StructureInfo[]` + spawn
+  - `placeStructures(theme, rng, mat, owner, height, terrainOnly) → Placed` — reserves the spawn pad (and the desert road), picks 6–10 recipes from the pool (contextual siting, 6 m gap), then 10–22 props from `THEMES[t].props` (1 m gap, no pad margin, `prop: true`), stamps pads, builds, returns `StructureInfo[]` + spawn
   - `stampPad(theme, mat, height, rect, h)` — flatten to h, refill strata, keep the heightmap in sync
   - `padHeight(height, rect) → number` — median terrain height under a rectangle
   - `reserved(theme) → Rect[]`, `overlaps(a, b, gap)`
 - `client/src/world/gen/StructureCtx.ts` **[worker]**
-  - `StructureCtx(mat, owner, id, origin)` — local voxel coordinates, y = 0 on the pad
-  - `set(x,y,z,m)` — writes material + owner, keeps `totalValue`, `voxels` and bounds
-  - `box(...)`, `hollowBox(..., thickness, floor, roof)`, `cylinder(cx, cz, r, y0, y1, m, hollow)`, `fill(..., fn)` — drawing helpers
+  - `StructureCtx(mat, owner, id, origin, depth, mirror)` — local voxel coordinates, y = 0 on the pad
+  - `m(metres) → voxels` — the only metre conversion recipes use
+  - `set(x,y,z,m)` — writes material + owner, keeps `totalValue` (per half-metre block via `voxelValue`), `voxels` and bounds
+  - `box(...)`, `hollowBox(..., thickness, floor, roof)`, `cage(...)`, `cylinder(cx, cz, r, y0, y1, m, hollow)`, `ellipsoid(...)`, `glazing(...)`, `fill(..., fn)` — drawing helpers
   - `center() → Vec3` — metres
-- `client/src/world/gen/recipes/` **[worker]** — `Recipe = { id, name, footprint(rng), build(ctx, rng, fp) }`
+- `client/src/world/gen/recipes/` **[worker]** — `Recipe = { id, name, siting, prop?, footprint(rng), build(ctx, rng, fp) }`, authored in metres through `m()` from `types.ts`
   - `desert.ts`: `gasStation`, `diner`, `billboard`, `waterTower`, `propaneCage`
   - `downtown.ts`: `convenienceStore`, `officeBlock`, `parkingStructure`, `busShelter`
   - `park.ts`: `monument`, `fountain`, `gazebo`, `statue`, `shed`
+  - `props.ts` (prop: true): `cactus`, `rock`, `car`, `roadSign`, `lampPost`, `dumpster`, `hydrant`, `tree`, `bench`
   - `index.ts`: `RECIPES` by id
 - `client/src/scoring/Score.ts` **[main]**
   - `reset(structures)` — registry and arena total
@@ -597,15 +602,20 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `createClusterBody(center, points, half)`, `removeBody(body)` — collapse bodies
   - `update(dt)` — fixed 60 Hz stepping, at most 2 sub-steps per frame
 - `client/src/destruction/Debris.ts` **[main]**
-  - `spawn(list, center, power)` — up to 24 cuboids per blast, 300 cap, glass splits smaller; one InstancedMesh with per-instance colour
+  - `spawn(list, center, power)` — picks up to 24 voxels per blast and queues them; `insertQueued()` creates `DEBRIS.insertPerFrame` bodies per frame; 300 cap, glass splits smaller; one InstancedMesh with per-instance colour
   - `update(now)` — copies body transforms into the InstancedMesh, shrinks over the last 0.5 s, expires at 4 s
   - `clear()`
 - `client/src/destruction/Collapse.ts` **[main]**
   - `Collapse(world, physics, score, mesher)`
   - `notify(list)` — queue a support check for each structure touched
-  - `update(now)` — one check or one cluster release per frame; sync falling bodies; expire after 12 s
-  - `check(id)` — flood fill from terrain-touching voxels over the structure's bounds; unsupported voxels → clusters
-  - `release(info, cluster)` — cut from the world, score, convex-hull body, worker mesh attached on arrival
+  - `update(now)` — one check posted or one cluster released per frame; sync falling bodies; expire after 12 s
+  - `check(id)` — copies the structure's padded bounding box (mat + owner) and posts it to the support worker
+  - `onSupport(response)` — queues the returned clusters (stale answers after a world reload are dropped)
+  - `release(info, cluster)` — re-validate against the live world, cut, `markDirtyBox`, score, box-collider body, worker mesh attached on arrival
+- `client/src/destruction/support.ts` **[worker, pure]**
+  - `findUnsupported({W,H,D,mat,owner,id,bedrockBelow}) → {clusters, fillMs}` — seeds from terrain/other-structure contact, 6-neighbour flood fill, unsupported voxels grouped into connected clusters (tested)
+- `client/src/destruction/support.worker.ts` **[worker]**
+  - `onmessage(SupportRequest)` — runs `findUnsupported`, transfers the cluster arrays back
 - `client/src/destruction/effects.ts` **[main]**
   - `blast(center, power, viewer, glass)` — shake amount from power/distance, additive flash sprite, particle burst
   - `applyShake(camera)` — random offset + roll after the controller placed the camera
@@ -655,7 +665,9 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Player mechanic (works today) | Function |
 | --- | --- |
 | Arena generates from theme + seed | `generateWorld` → `generateTerrain` |
-| Dunes, road, sidewalk grid, gravel paths | `desertRoad`, `surfaceOverride`, `fillColumn` |
+| Dunes, road with centre and edge lines, kerbed streets with lane dashes, gravel paths, rock, dark sand, dry grass, flower beds | `desertRoad`, `desertRoadSurface`, `downtownSurface`, `surfaceOverride`, `fillColumn` |
+| Props (cars, trees, lamp posts, cactus, rocks …) fill the arena and pay a little | `placeStructures` props pass, `recipes/props.ts`, `StructureInfo.prop` |
+| Ground has a faint outline, buildings the full voxel treatment, the gun in hand reads solid | `terr` attribute in `meshVoxels`; `RENDER.terrainStyle` / `viewModelStyle` in the `VoxelMaterial` shader |
 | World appears chunk by chunk, nearest first | `ChunkRenderer.update` → `mesher.worker` |
 | Brick rows, siding, marble, per-voxel speckle | `patternFactor`; jitter in `VoxelMaterial` shader |
 | Corners look shaded | AO in `meshVoxels` |
@@ -725,6 +737,8 @@ Everything in SPEC.md "Project structure" and "Build plan" now has code. Known g
 
 
 ## Changelog
+
+- 2026-11-04: Visual overhaul — 0.25 m voxels and a 96 m arena; metre-based siting constants; recipes in metres with props; terrain markings and variety; per-class shader style; collapse support on a worker (`support.ts`); box cluster bodies, 0.5 m heightfield, debris insert spread, `markDirtyBox`, shader pre-compile in warm-up; material values per half-metre block
 
 - 2026-11-04: visual review gallery script; HUD no longer intercepts clicks on the pause screen; milestone bursts go quiet after three
 - 2026-11-04: heightfield refresh after terrain carving
