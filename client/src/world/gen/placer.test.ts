@@ -29,7 +29,7 @@ describe('placer', () => {
       const real = a.placed.structures.filter((s) => !s.prop);
       expect(real.length).toBeGreaterThanOrEqual(6);
       expect(real.length).toBeLessThanOrEqual(10);
-      for (const s of a.placed.structures) expect(s.totalValue).toBeGreaterThan(0);
+      for (const s of real) expect(s.totalValue).toBeGreaterThan(0); // props may be worth nothing (boulders)
       expect(hash(a.mat)).toBe(hash(b.mat));
       expect(hash(a.mat)).not.toBe(hash(c.mat));
       // Owner tags agree with the registry.

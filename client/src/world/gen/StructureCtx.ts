@@ -107,6 +107,33 @@ export class StructureCtx {
         }
   }
 
+  /** Solid ellipsoid centred at (cx, cy, cz) with radii (rx, ry, rz), all in voxels (centre may be fractional). */
+  ellipsoid(cx: number, cy: number, cz: number, rx: number, ry: number, rz: number, m: number): void {
+    for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
+      for (let z = Math.floor(cz - rz); z <= Math.ceil(cz + rz); z++)
+        for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
+          const dx = (x + 0.5 - cx) / rx;
+          const dy = (y + 0.5 - cy) / ry;
+          const dz = (z + 0.5 - cz) / rz;
+          if (dx * dx + dy * dy + dz * dz <= 1) this.set(x, y, z, m);
+        }
+  }
+
+  /**
+   * A glazed wall panel in the x/y plane at depth z (or the z/y plane at x when `alongZ`): glass with
+   * frame bars of `frameMat` every `pitch` voxels and around the edge.
+   */
+  glazing(a0: number, y0: number, a1: number, y1: number, fixed: number, alongZ: boolean, pitch: number, frameMat: number, glassMat: number): void {
+    for (let y = y0; y <= y1; y++)
+      for (let a = a0; a <= a1; a++) {
+        const edge = a === a0 || a === a1 || y === y0 || y === y1;
+        const bar = (a - a0) % pitch === 0 || (y - y0) % pitch === 0;
+        const mat = edge || bar ? frameMat : glassMat;
+        if (alongZ) this.set(fixed, y, a, mat);
+        else this.set(a, y, fixed, mat);
+      }
+  }
+
   /** Fill every voxel in the box where fn returns a non-zero material. */
   fill(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, fn: (x: number, y: number, z: number) => number): void {
     for (let y = y0; y <= y1; y++)
