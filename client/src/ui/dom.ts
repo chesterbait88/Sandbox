@@ -36,11 +36,14 @@ export function tickNumber(el: HTMLElement, target: number, ms = 400, suffix = '
   step();
 }
 
-/** Re-trigger a CSS animation class. */
+/** Re-trigger a CSS animation class without forcing a synchronous reflow. */
 export function pop(el: HTMLElement, cls = 'pop'): void {
+  if (!el.classList.contains(cls)) {
+    el.classList.add(cls);
+    return;
+  }
   el.classList.remove(cls);
-  void el.offsetWidth;
-  el.classList.add(cls);
+  requestAnimationFrame(() => el.classList.add(cls));
 }
 
 export const settings = {

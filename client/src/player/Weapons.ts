@@ -39,16 +39,16 @@ interface Charge {
 const PM = PROJECTILE_MODELS;
 
 /** Thrown and placed weapons keep their whole count in `mag`; guns start with a full magazine. */
-function initialMag(w: Weapon): number {
-  if (!Number.isFinite(w.totalAmmo)) return Infinity;
-  if (w.kind === 'thrown' || w.kind === 'placed') return w.totalAmmo;
-  return Math.min(w.magSize, w.totalAmmo);
+function initialMag(w: Weapon, total = w.totalAmmo): number {
+  if (!Number.isFinite(total)) return Infinity;
+  if (w.kind === 'thrown' || w.kind === 'placed') return total;
+  return Math.min(w.magSize, total);
 }
 
-function initialReserve(w: Weapon): number {
-  if (!Number.isFinite(w.totalAmmo)) return Infinity;
+function initialReserve(w: Weapon, total = w.totalAmmo): number {
+  if (!Number.isFinite(total)) return Infinity;
   if (w.kind === 'thrown' || w.kind === 'placed') return 0;
-  return Math.max(0, w.totalAmmo - w.magSize);
+  return Math.max(0, total - w.magSize);
 }
 const PSIZE = { x: 8, y: 8, z: 12 };
 
@@ -74,6 +74,10 @@ export class Weapons {
   private now = 0;
   /** Input is ignored when false (menus, round over). */
   enabled = true;
+  /** Custom loadout: total ammo per weapon id (null = the fixed kit). */
+  loadout: Record<string, number> | null = null;
+  /** Sticky grenades stick on first contact instead of bouncing. */
+  sticky = false;
   private swingTimer = 0;
   private pendingSwing: WeaponState | null = null;
   private tmpV = new THREE.Vector3();
@@ -96,8 +100,9 @@ export class Weapons {
   reset(): void {
     for (const s of this.slots) {
       const w = s.def;
-      s.mag = initialMag(w);
-      s.reserve = initialReserve(w);
+      const total = this.loadout && Number.isFinite(w.totalAmmo) ? (this.loadout[w.id] ?? 0) : w.totalAmmo;
+      s.mag = initialMag(w, total);
+      s.reserve = initialReserve(w, total);
       s.reloading = 0;
       s.cooldown = 0;
     }
@@ -356,7 +361,8 @@ export class Weapons {
     for (let i = this.grenades.length - 1; i >= 0; i--) {
       const g = this.grenades[i];
       g.fuse -= dt;
-      g.vel.y -= WEAPON_TUNING.gravity * dt;
+      const stuck = this.sticky && g.vel.lengthSq() === 0 && g.spin.lengthSq() === 0;
+      if (!stuck) g.vel.y -= WEAPON_TUNING.gravity * dt;
       const step = this.tmpV.copy(g.vel).multiplyScalar(dt);
       const len = step.length();
       if (len > 1e-5) {
@@ -364,13 +370,19 @@ export class Weapons {
         const hit = this.world.raycast(g.pos, dir, len + r);
         if (hit) {
           g.pos.addScaledVector(dir, Math.max(0, hit.dist - r));
-          const n = new THREE.Vector3(hit.face.x, hit.face.y, hit.face.z);
-          const vn = g.vel.dot(n);
-          // Reflect the normal component and damp the tangential one.
-          g.vel.addScaledVector(n, -(1 + WEAPON_TUNING.grenadeRestitution) * vn);
-          const tangential = g.vel.clone().addScaledVector(n, -g.vel.dot(n));
-          g.vel.addScaledVector(tangential, -WEAPON_TUNING.grenadeFriction * 0.5);
-          if (g.vel.length() < WEAPON_TUNING.grenadeRestSpeed) g.vel.set(0, 0, 0);
+          if (this.sticky) {
+            // Sticky: stop dead on the first surface.
+            g.vel.set(0, 0, 0);
+            g.spin.set(0, 0, 0);
+          } else {
+            const n = new THREE.Vector3(hit.face.x, hit.face.y, hit.face.z);
+            const vn = g.vel.dot(n);
+            // Reflect the normal component and damp the tangential one.
+            g.vel.addScaledVector(n, -(1 + WEAPON_TUNING.grenadeRestitution) * vn);
+            const tangential = g.vel.clone().addScaledVector(n, -g.vel.dot(n));
+            g.vel.addScaledVector(tangential, -WEAPON_TUNING.grenadeFriction * 0.5);
+            if (g.vel.length() < WEAPON_TUNING.grenadeRestSpeed) g.vel.set(0, 0, 0);
+          }
         } else {
           g.pos.add(step);
         }

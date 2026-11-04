@@ -261,7 +261,7 @@ export function placeStructures(theme: ThemeId, rng: Rng, mat: Uint8Array, owner
       stampPad(theme, mat, height, padRect, h);
       const ctx = new StructureCtx(mat, owner, id, { x: rect.x0, y: h + 1, z: rect.z0 }, fp.z, chosen.mirror);
       recipe.build(ctx, rng, fp);
-      structures.push({ id, name: recipe.name, totalValue: Math.round(ctx.totalValue), center: ctx.center(), voxels: ctx.voxels });
+      structures.push({ id, name: recipe.name, totalValue: Math.round(ctx.totalValue), center: ctx.center(), voxels: ctx.voxels, bounds: ctx.bounds() });
       taken.push(rect);
       placed.push({ id: recipe.id, rect });
       id++;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, SCORING, THEME_IDS, type ThemeId } from '@vw/config';
+import { LOADOUT, PLAYER, SCORING, THEME_IDS, WEAPONS, type LoadoutMode, type ThemeId } from '@vw/config';
 import type { Game } from './Game';
 import { Round } from '../state/Round';
 import { events } from '../state/events';
@@ -11,6 +11,7 @@ export type ScreenName = 'menu' | 'worldPicker' | 'loadout' | 'countdown' | 'pla
 export interface RoundResult {
   theme: ThemeId;
   seed: string;
+  mode: LoadoutMode;
   score: number;
   voxelsDestroyed: number;
   structuresLeveled: number;
@@ -30,6 +31,11 @@ export class Flow {
   theme: ThemeId = 'desert';
   seed = randomSeedString();
   readonly round = new Round();
+  /** Fixed kit or point-buy. */
+  mode: LoadoutMode = 'fixed';
+  /** Custom ammo counts by weapon id. */
+  custom: Record<string, number> = Flow.defaultCustom();
+  sticky = false;
   session: Session | null = null;
   result: RoundResult | null = null;
   lastInitials = 'AAA';
@@ -50,6 +56,63 @@ export class Flow {
       // Losing the lock mid-round pauses; losing it because the round ended does not.
       if (!locked && this.state === 'playing' && this.round.running) this.pause();
     };
+  }
+
+  static defaultCustom(): Record<string, number> {
+    const c: Record<string, number> = {};
+    for (const w of WEAPONS) if (Number.isFinite(w.totalAmmo)) c[w.id] = w.totalAmmo;
+    return c;
+  }
+
+  /** Cost of the current custom loadout. */
+  customCost(): number {
+    let cost = 0;
+    for (const id in this.custom) cost += (LOADOUT.costs[id] ?? 0) * this.custom[id];
+    if (this.sticky) cost += LOADOUT.stickyCost;
+    return Math.round(cost * 100) / 100;
+  }
+
+  setMode(m: LoadoutMode): void {
+    this.mode = m;
+  }
+
+  /** Buy or sell one step of a weapon's ammo; refuses to exceed the budget or the ceiling. */
+  adjust(id: string, dir: 1 | -1): boolean {
+    const step = LOADOUT.steps[id] ?? 1;
+    const next = Math.max(0, Math.min(LOADOUT.max[id] ?? Infinity, (this.custom[id] ?? 0) + dir * step));
+    if (next === this.custom[id]) return false;
+    const prev = this.custom[id];
+    this.custom[id] = next;
+    if (this.customCost() > LOADOUT.budget) {
+      this.custom[id] = prev;
+      return false;
+    }
+    return true;
+  }
+
+  toggleSticky(): boolean {
+    this.sticky = !this.sticky;
+    if (this.customCost() > LOADOUT.budget) {
+      this.sticky = !this.sticky;
+      return false;
+    }
+    return true;
+  }
+
+  /** URL that replays this arena. */
+  shareLink(): string {
+    const u = new URL(location.href);
+    u.search = '';
+    u.searchParams.set('arena', `${this.theme}-${this.seed}`);
+    return u.toString();
+  }
+
+  /** Open the picker with a given arena preselected (from a share link or a leaderboard row). */
+  replay(theme: ThemeId, seed: string): void {
+    this.theme = theme;
+    this.seed = seed.toUpperCase().slice(0, 12) || this.seed;
+    void this.loadArena();
+    this.set('worldPicker');
   }
 
   onStateChange(fn: (s: ScreenName, prev: ScreenName) => void): void {
@@ -128,7 +191,9 @@ export class Flow {
     this.game.input.requestLock();
     this.game.audio.stopMusic();
     if (!this.worldReady) await this.loading;
-    this.session = await api.startSession(this.theme, this.seed).catch(() => null);
+    this.session = await api.startSession(this.theme, this.seed, this.mode).catch(() => null);
+    this.game.weapons.loadout = this.mode === 'custom' ? { ...this.custom } : null;
+    this.game.weapons.sticky = this.mode === 'custom' && this.sticky;
     this.game.weapons.reset();
     this.game.player.spawn(this.game.world.spawn, this.game.world.spawnYaw);
     this.game.score.reset(this.game.world.structures);
@@ -181,10 +246,11 @@ export class Flow {
     this.freezeEnd = performance.now() + SCORING.endFreezeS * 1000;
     events.emit('roundEnd', { score: s.score });
     this.game.input.releaseLock();
-    const q = await api.qualifies(this.theme, s.score).catch(() => ({ rank: 0, qualifies: false, needed: 0 }));
+    const q = await api.qualifies(this.theme, s.score, this.mode).catch(() => ({ rank: 0, qualifies: false, needed: 0 }));
     this.result = {
       theme: this.theme,
       seed: this.seed,
+      mode: this.mode,
       score: s.score,
       voxelsDestroyed: s.voxelsDestroyed,
       structuresLeveled: s.structuresLeveled,

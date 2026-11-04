@@ -5,6 +5,8 @@ export interface SessionPayload {
   seed: string;
   startedAt: number;
   nonce: string;
+  /** 'fixed' or 'custom'; older tokens without it are fixed. */
+  mode?: string;
 }
 
 const b64u = (b: Buffer): string => b.toString('base64url');

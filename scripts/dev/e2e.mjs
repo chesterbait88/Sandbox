@@ -21,7 +21,7 @@ const step = async (label, fn, expect) => {
   }
   console.log(`${label.padEnd(28)} → ${await state()}`);
 };
-await page.goto(`http://localhost:${port}/?seed=E2E&theme=desert`, { waitUntil: 'load' });
+await page.goto(`http://localhost:${port}/?seed=E2E`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__vwReady === true, null, { timeout: 90000 });
 console.log('boot'.padEnd(28), '→', await state());
 await step('click PLAY', () => page.click('text=PLAY'), 'worldPicker');

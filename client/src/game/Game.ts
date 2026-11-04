@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAT, MATERIALS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, type ThemeId } from '@vw/config';
+import { COLLAPSE, MAT, MATERIALS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, type ThemeId } from '@vw/config';
 import { GameRenderer } from '../render/Renderer';
 import { ChunkRenderer } from '../world/ChunkRenderer';
 import { World } from '../world/World';
@@ -16,6 +16,9 @@ import { Synth } from '../audio/Synth';
 import { events } from '../state/events';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { Score } from '../scoring/Score';
+import { Collapse } from '../destruction/Collapse';
+import { CHUNK_SIZE } from '@vw/config';
+import { voxelIndex } from '../world/World';
 
 /** Owns every runtime system and the frame loop. The state machine (phase 4) drives it. */
 export class Game {
@@ -33,6 +36,7 @@ export class Game {
   readonly weapons: Weapons;
   readonly audio = new Synth();
   readonly score = new Score();
+  collapse!: Collapse;
   theme: ThemeId = 'desert';
   seed = 'ALPHA';
   /** Global time scale (slow-mo). */
@@ -72,6 +76,13 @@ export class Game {
     await this.physics.create(PLAYER.gravity);
     this.debris = new Debris(this.physics);
     this.gfx.scene.add(this.debris.mesh);
+    this.collapse = new Collapse(this.world, this.physics, this.score, this.chunks);
+    this.gfx.scene.add(this.collapse.group);
+    // Mirror walls into Rapier for chunks that hold structure voxels.
+    this.chunks.onMeshed = (c, opaque) => {
+      const hasStructure = this.chunkHasStructure(c.cx, c.cy, c.cz);
+      this.physics.queueChunkCollider(c.index, hasStructure && opaque.index.length ? { vertices: opaque.position, indices: opaque.index } : null);
+    };
     this.ready = true;
   }
 
@@ -104,7 +115,10 @@ export class Game {
         this.debris?.spawn(h.destroyed, h.center, h.power);
         return;
       }
-      if (h.destroyed.length) this.score.onDestroyed(h.destroyed);
+      if (h.destroyed.length) {
+        this.score.onDestroyed(h.destroyed);
+        this.collapse?.notify(h.destroyed);
+      }
       if (h.destroyed.length === 0 && h.power === 0) {
         this.audio.swing(false);
         return;
@@ -134,11 +148,30 @@ export class Game {
       else if (m.reward === 'c4') this.weapons.grant('c4', WEAPON_TUNING.rewardC4);
       // 'time' is applied by the round clock (phase 4).
     });
+    events.on('collapse', (c) => {
+      const eye = this.player.eye();
+      const dist = Math.hypot(c.center.x - eye.x, c.center.y - eye.y, c.center.z - eye.z);
+      this.effects.blast(c.center, COLLAPSE.rumblePower * Math.min(1, c.voxels / 200), eye);
+      this.audio.boom(COLLAPSE.rumblePower, dist);
+    });
     events.on('weaponFire', (f) => {
       if (f.weapon === 'pistol' || f.weapon === 'shotgun' || f.weapon === 'rifle' || f.weapon === 'rocket') this.audio.shot(f.weapon);
       else if (f.kind === 'thrown' || f.kind === 'placed') this.audio.click(0.6);
     });
     events.on('weaponSwitch', () => this.audio.click(1.2));
+  }
+
+  private chunkHasStructure(cx: number, cy: number, cz: number): boolean {
+    const owner = this.world.owner;
+    const x0 = cx * CHUNK_SIZE;
+    const y0 = cy * CHUNK_SIZE;
+    const z0 = cz * CHUNK_SIZE;
+    for (let y = y0; y < y0 + CHUNK_SIZE; y++)
+      for (let z = z0; z < z0 + CHUNK_SIZE; z++) {
+        const base = voxelIndex(x0, y, z);
+        for (let x = 0; x < CHUNK_SIZE; x++) if (owner[base + x] !== 0) return true;
+      }
+    return false;
   }
 
   /** Generate and install a new arena. Resolves when every chunk is meshed. */
@@ -154,7 +187,9 @@ export class Game {
     this.weapons.setWorld(world);
     this.score.reset(world.structures);
     this.physics.setTerrain(height);
+    this.physics.clearChunkColliders();
     this.debris?.clear();
+    this.collapse?.setWorld(world);
     this.player.spawn(world.spawn, world.spawnYaw);
     this.chunks.perFrame = RENDER.remeshBurst;
     this.warmup();
@@ -196,6 +231,8 @@ export class Game {
       this.weapons.update(dt, now, this.input);
       this.destruction.update(now);
       this.score.update(dt);
+      this.collapse.update(now);
+      this.physics.buildQueuedColliders();
       this.physics.update(dt);
       this.debris.update(now);
       this.effects.update(dt, now);
@@ -220,7 +257,8 @@ export class Game {
       `pos ${this.player.position.x.toFixed(1)} ${this.player.position.y.toFixed(1)} ${this.player.position.z.toFixed(1)} · ${this.weapons.active.def.name}\n` +
         `chunks meshed ${this.chunks.stats.meshed} · dirty ${this.chunks.stats.dirty} · inflight ${this.chunks.stats.inFlight} · avg ${this.chunks.stats.avgMs.toFixed(2)} ms\n` +
         `debris ${this.debris?.count ?? 0} · pending chains ${this.destruction.pendingCount} · worst frame ${this.worstFrame.toFixed(1)} ms\n` +
-        `score ${this.score.score} ×${this.score.multiplier} · structures ${this.world.structures.length} · arena ${this.score.arenaTotal} pts · ${(this.score.arenaPercent * 100).toFixed(1)}% wrecked`
+        `score ${this.score.score} ×${this.score.multiplier} · structures ${this.world.structures.length} · arena ${this.score.arenaTotal} pts · ${(this.score.arenaPercent * 100).toFixed(1)}% wrecked\n` +
+        `wall colliders ${this.physics.chunkColliderCount} · collapse checks ${this.collapse?.stats.checks ?? 0} (${(this.collapse?.stats.lastCheckMs ?? 0).toFixed(1)} ms) · falling ${this.collapse?.bodyCount ?? 0}`
     );
     this.input.endFrame();
   }

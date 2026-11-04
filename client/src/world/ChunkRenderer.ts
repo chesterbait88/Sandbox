@@ -21,10 +21,25 @@ export class ChunkRenderer {
   private pool: Uint8Array[] = [];
   /** Stats for the debug overlay. */
   stats = { meshed: 0, lastMs: 0, avgMs: 0, inFlight: 0, dirty: 0 };
+  /** Called with each fresh opaque mesh (world-space buffers) so physics can mirror the walls. */
+  onMeshed: ((chunk: Chunk, opaque: { position: Float32Array; index: Uint32Array }) => void) | null = null;
   /** Max requests per frame; raised while a world loads. */
   perFrame: number = RENDER.remeshPerFrame;
   private maxInFlight = RENDER.mesherWorkers * 4;
   private rr = 0;
+  private arbitrary = new Map<number, (r: MeshResponse) => void>();
+  private arbitraryId = 0;
+
+  /** Mesh an arbitrary padded cube (e.g. a collapsing cluster) on a worker. The array is transferred. */
+  meshArbitrary(vox: Uint8Array, size: number, origin: { x: number; y: number; z: number }): Promise<MeshResponse> {
+    return new Promise((resolve) => {
+      const id = ++this.arbitraryId;
+      this.arbitrary.set(id, resolve);
+      const msg: MeshRequest = { type: 'mesh', index: -1, version: id, cx: 0, cy: 0, cz: 0, vox, size, origin };
+      const w = this.workers[this.rr++ % this.workers.length];
+      w.postMessage(msg, [vox.buffer as ArrayBuffer]);
+    });
+  }
 
   constructor(private world: World) {
     for (let i = 0; i < CHUNK_COUNT; i++) this.chunks.push(new Chunk(i));
@@ -83,6 +98,12 @@ export class ChunkRenderer {
   }
 
   private onResult(r: MeshResponse): void {
+    if (r.index < 0) {
+      const resolve = this.arbitrary.get(r.version);
+      this.arbitrary.delete(r.version);
+      resolve?.(r);
+      return;
+    }
     this.inFlight--;
     this.pool.push(r.vox);
     const c = this.chunks[r.index];
@@ -101,6 +122,7 @@ export class ChunkRenderer {
       c.opaque = m;
       this.group.add(m);
     }
+    this.onMeshed?.(c, { position: r.opaque.position, index: r.opaque.index });
     if (r.transparent.index.length > 0) {
       const m = new THREE.Mesh(buildGeometry(r.transparent), this.transparentMat);
       m.matrixAutoUpdate = false;

@@ -9,6 +9,8 @@ export class PhysicsWorld {
   static ready: Promise<typeof RAPIER> | null = null;
   world!: RAPIER.World;
   private terrain: RAPIER.Collider | null = null;
+  private chunkColliders = new Map<number, RAPIER.Collider>();
+  private colliderQueue = new Map<number, { vertices: Float32Array; indices: Uint32Array } | null>();
   R!: typeof RAPIER;
   private accumulator = 0;
   readonly step: number = PHYSICS.step;
@@ -41,6 +43,54 @@ export class PhysicsWorld {
       .setFriction(0.9)
       .setRestitution(0.2);
     this.terrain = this.world.createCollider(desc);
+  }
+
+  /** Queue a chunk's wall geometry (world-space triangles) for a static trimesh collider; null removes it. */
+  queueChunkCollider(index: number, mesh: { vertices: Float32Array; indices: Uint32Array } | null): void {
+    this.colliderQueue.set(index, mesh);
+  }
+
+  /** Build at most PHYSICS.chunkCollidersPerFrame queued colliders. Returns ms spent. */
+  buildQueuedColliders(): number {
+    const t0 = performance.now();
+    let n = 0;
+    for (const [index, mesh] of this.colliderQueue) {
+      this.colliderQueue.delete(index);
+      const old = this.chunkColliders.get(index);
+      if (old) {
+        this.world.removeCollider(old, false);
+        this.chunkColliders.delete(index);
+      }
+      if (mesh && mesh.indices.length >= 3) {
+        const c = this.world.createCollider(this.R.ColliderDesc.trimesh(mesh.vertices, mesh.indices).setFriction(0.8).setRestitution(0.2));
+        this.chunkColliders.set(index, c);
+      }
+      if (++n >= PHYSICS.chunkCollidersPerFrame) break;
+    }
+    return performance.now() - t0;
+  }
+
+  get chunkColliderCount(): number {
+    return this.chunkColliders.size;
+  }
+
+  clearChunkColliders(): void {
+    for (const c of this.chunkColliders.values()) this.world.removeCollider(c, false);
+    this.chunkColliders.clear();
+    this.colliderQueue.clear();
+  }
+
+  /** A dynamic body with a convex hull (or box fallback) for a collapsing cluster. */
+  createClusterBody(center: { x: number; y: number; z: number }, points: Float32Array, half: { x: number; y: number; z: number }): RAPIER.RigidBody {
+    const body = this.world.createRigidBody(this.R.RigidBodyDesc.dynamic().setTranslation(center.x, center.y, center.z).setAngularDamping(0.8).setLinearDamping(0.1));
+    const hull = points.length >= 12 ? this.R.ColliderDesc.convexHull(points) : null;
+    const desc = hull ?? this.R.ColliderDesc.cuboid(half.x, half.y, half.z);
+    this.world.createCollider(desc.setFriction(0.9).setRestitution(0.05).setDensity(2), body);
+    return body;
+  }
+
+  removeBody(body: RAPIER.RigidBody): void {
+    this.world.removeRigidBody(body);
   }
 
   /** Fixed-step the simulation. */

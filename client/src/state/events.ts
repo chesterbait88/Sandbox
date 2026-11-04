@@ -25,6 +25,8 @@ export interface GameEvents {
   roundEnd: { score: number };
   tick: { remaining: number };
   placedCharge: { count: number };
+  /** An unsupported part of a structure let go and fell. */
+  collapse: { center: Vec3; voxels: number; name: string };
 }
 
 export const events = new Emitter<GameEvents>();

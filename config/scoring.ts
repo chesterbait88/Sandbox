@@ -24,6 +24,8 @@ export const SCORING = {
   /** Rate limit for session creation, per IP per minute. */
   sessionRateLimitPerMin: 10,
   leaderboardCacheMs: 5000,
+  /** Milestones earned in one burst are announced one per this many seconds. */
+  milestoneDripS: 0.6,
   /** Countdown before the round starts (s). */
   countdownSeconds: 3
 } as const;

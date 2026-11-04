@@ -39,7 +39,7 @@ const seed = params.get('seed') ?? undefined;
 /** Debug jump points for screenshots: ?screen=menu|picker|loadout|hud|pause|results|initials|leaderboard */
 async function jump(screen: string): Promise<void> {
   const fakeResult = () => {
-    flow.result = { theme: flow.theme, seed: flow.seed, score: 12480, voxelsDestroyed: 3120, structuresLeveled: 2, bestChain: 4, arenaPercent: 0.21, rank: 3, qualifies: true, needed: 0 };
+    flow.result = { theme: flow.theme, seed: flow.seed, mode: 'fixed', score: 12480, voxelsDestroyed: 3120, structuresLeveled: 2, bestChain: 4, arenaPercent: 0.21, rank: 3, qualifies: true, needed: 0 };
     flow.session = { token: 'debug', startedAt: Date.now() };
   };
   switch (screen) {
@@ -81,6 +81,12 @@ async function jump(screen: string): Promise<void> {
   await flow.boot(theme, seed);
   const screen = params.get('screen');
   if (screen && screen !== 'menu') await jump(screen);
+  else {
+    // A share link (?arena=theme-SEED) lands on the picker with that arena preselected.
+    const arena = params.get('arena');
+    const m = arena?.match(/^([a-z]+)-([A-Z0-9]{1,12})$/i);
+    if (m && THEME_IDS.includes(m[1] as ThemeId)) flow.replay(m[1] as ThemeId, m[2]);
+  }
   await game.whenMeshed();
   window.__vwReady = true;
 })();

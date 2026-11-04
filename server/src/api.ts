@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { SCORING } from '@vw/config';
 import type { Db } from './db';
 import { TokenSigner } from './token';
-import { cleanInitials, isTheme, RateLimiter, validElapsed, validScore } from './validate';
+import { cleanInitials, isTheme, modeOf, RateLimiter, validElapsed, validScore } from './validate';
 
 export interface ApiOptions {
   db: Db;
@@ -30,11 +30,11 @@ export function createApi(opts: ApiOptions): Hono {
   api.post('/session', async (c) => {
     const ip = ipOf(c);
     if (!limiter.allow(ip, now())) return c.json({ error: 'rate limited' }, 429);
-    const body = await c.req.json<{ theme?: unknown; seed?: unknown }>().catch(() => null);
+    const body = await c.req.json<{ theme?: unknown; seed?: unknown; mode?: unknown }>().catch(() => null);
     if (!body || !isTheme(body.theme)) return c.json({ error: 'bad theme' }, 400);
     const seed = typeof body.seed === 'string' ? body.seed.slice(0, 32) : '';
     const startedAt = now();
-    const token = signer.sign({ theme: body.theme, seed, startedAt, nonce: TokenSigner.nonce() });
+    const token = signer.sign({ theme: body.theme, seed, startedAt, nonce: TokenSigner.nonce(), mode: modeOf(body.mode) });
     return c.json({ token, startedAt });
   });
 
@@ -50,19 +50,21 @@ export function createApi(opts: ApiOptions): Hono {
     if (!db.useToken(session.nonce, now())) return c.json({ accepted: false, reason: 'token already used' }, 403);
     db.pruneTokens(now(), SCORING.maxRoundElapsedS * 2000);
     const stats = body.stats && typeof body.stats === 'object' ? JSON.stringify(body.stats).slice(0, 2000) : '{}';
-    db.insertScore({ theme: session.theme, seed: session.seed, initials, score: body.score, stats_json: stats, ip_hash: ipHash(ipOf(c)) });
+    const mode = modeOf(session.mode);
+    db.insertScore({ theme: session.theme, seed: session.seed, initials, score: body.score, stats_json: stats, ip_hash: ipHash(ipOf(c)), mode });
     cache.clear();
-    return c.json({ accepted: true, rank: db.rankFor(session.theme, body.score), initials });
+    return c.json({ accepted: true, rank: db.rankFor(session.theme, body.score, false, mode), initials });
   });
 
   api.get('/leaderboard', (c) => {
     const theme = c.req.query('theme') ?? 'all';
     if (theme !== 'all' && !isTheme(theme)) return c.json({ entries: [] });
     const limit = Math.max(1, Math.min(SCORING.leaderboardSize, Number(c.req.query('limit') ?? 10) || 10));
-    const key = `${theme}:${limit}`;
+    const mode = modeOf(c.req.query('mode'));
+    const key = `${mode}:${theme}:${limit}`;
     const hit = cache.get(key);
     if (hit && now() - hit.at < SCORING.leaderboardCacheMs) return c.json(hit.body as object);
-    const body = { entries: db.top(theme, limit) };
+    const body = { entries: db.top(theme, limit, mode) };
     cache.set(key, { at: now(), body });
     return c.json(body);
   });
@@ -71,8 +73,9 @@ export function createApi(opts: ApiOptions): Hono {
     const theme = c.req.query('theme') ?? 'all';
     if (theme !== 'all' && !isTheme(theme)) return c.json({ rank: 0, qualifies: false, needed: 0 });
     const score = Math.max(0, Math.floor(Number(c.req.query('score') ?? 0) || 0));
-    const rank = db.rankFor(theme, score, true);
-    const cutoff = db.cutoff(theme);
+    const mode = modeOf(c.req.query('mode'));
+    const rank = db.rankFor(theme, score, true, mode);
+    const cutoff = db.cutoff(theme, mode);
     const qualifies = rank <= SCORING.leaderboardSize;
     return c.json({ rank, qualifies, needed: qualifies || cutoff === null ? 0 : cutoff - score + 1 });
   });

@@ -11,6 +11,8 @@ export const DEBRIS = {
   spinMax: 6,
   /** Continuous collision detection per piece (expensive; pieces move < 0.3 m per step). */
   ccd: false,
+  /** Collider shape: 'ball' is much cheaper against wall trimeshes; the visual stays a cube. */
+  collider: 'ball' as 'ball' | 'cuboid',
   /** Glass spawns this many more, smaller pieces. */
   glassCountMul: 2,
   glassSizeMul: 0.5
@@ -54,5 +56,24 @@ export const MUSIC = {
 export const PHYSICS = {
   /** Fixed step (s) and the most steps taken in one frame before time is dropped. */
   step: 1 / 60,
-  maxSubSteps: 2
+  maxSubSteps: 2,
+  /** Chunk trimesh colliders (walls) for debris: built only for chunks that hold structure voxels, this many per frame. */
+  chunkCollidersPerFrame: 1
+} as const;
+
+/** Structural collapse: unsupported clusters of a structure fall as one rigid body. */
+export const COLLAPSE = {
+  /** Clusters smaller than this are simply deleted (they would be debris-sized). */
+  minBodyVoxels: 6,
+  /** Larger clusters are deleted without a body (meshing them would stall the frame). */
+  maxBodyVoxels: 60000,
+  maxBodies: 10,
+  lifetimeS: 12,
+  shrinkS: 1,
+  /** Points sampled for the convex hull collider. */
+  hullSamples: 320,
+  /** Support checks run at most this many per frame. */
+  checksPerFrame: 1,
+  /** Blast feedback when a cluster lets go. */
+  rumblePower: 45
 } as const;

@@ -71,7 +71,8 @@ export class Debris {
         const body = this.physics.world.createRigidBody(
           R.RigidBodyDesc.dynamic().setTranslation(px, py, pz).setCcdEnabled(DEBRIS.ccd).setAngularDamping(0.5).setLinearDamping(0.05)
         );
-        this.physics.world.createCollider(R.ColliderDesc.cuboid(size / 2, size / 2, size / 2).setRestitution(0.25).setFriction(0.8).setDensity(1.5), body);
+        const shape = DEBRIS.collider === 'ball' ? R.ColliderDesc.ball(size * 0.45) : R.ColliderDesc.cuboid(size / 2, size / 2, size / 2);
+        this.physics.world.createCollider(shape.setRestitution(0.25).setFriction(0.8).setDensity(1.5), body);
         let dx = px - center.x;
         let dy = py - center.y;
         let dz = pz - center.z;

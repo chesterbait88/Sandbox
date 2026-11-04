@@ -32,6 +32,8 @@ export interface StructureInfo {
   center: Vec3;
   /** Voxel count at generation. */
   voxels: number;
+  /** Inclusive voxel bounds at generation (voxels only ever leave a structure). */
+  bounds: { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number };
 }
 
 export const voxelIndex = (x: number, y: number, z: number): number => x + SX * (z + SZ * y);

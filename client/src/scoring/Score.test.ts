@@ -11,8 +11,8 @@ describe('Score', () => {
     events.clear();
     s = new Score();
     s.reset([
-      { id: 1, name: 'Gas Station', totalValue: 100, center: { x: 0, y: 0, z: 0 }, voxels: 20 },
-      { id: 2, name: 'Shed', totalValue: 10, center: { x: 0, y: 0, z: 0 }, voxels: 5 }
+      { id: 1, name: 'Gas Station', totalValue: 100, center: { x: 0, y: 0, z: 0 }, voxels: 20, bounds: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } },
+      { id: 2, name: 'Shed', totalValue: 10, center: { x: 0, y: 0, z: 0 }, voxels: 5, bounds: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } }
     ]);
   });
 
@@ -49,8 +49,10 @@ describe('Score', () => {
   it('milestones fire every interval with cycling callouts and rewards', () => {
     const ms: string[] = [];
     events.on('milestone', (m) => ms.push(`${m.callout}:${m.reward}`));
-    s.reset([{ id: 1, name: 'Tower', totalValue: 100000, center: { x: 0, y: 0, z: 0 }, voxels: 1 }]);
-    s.onDestroyed(v(1, MAT.STEEL, 300)); // 2400 points
+    s.reset([{ id: 1, name: 'Tower', totalValue: 100000, center: { x: 0, y: 0, z: 0 }, voxels: 1, bounds: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } }]);
+    s.onDestroyed(v(1, MAT.STEEL, 300)); // 2400 points → two milestones, announced one at a time
+    expect(ms).toEqual(['WRECKING:grenade']);
+    s.update(SCORING.milestoneDripS + 0.01);
     expect(ms).toEqual(['WRECKING:grenade', 'DEMOLITION:rocket']);
     expect(s.arenaPercent).toBeCloseTo(0.024);
   });

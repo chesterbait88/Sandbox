@@ -25,6 +25,9 @@ export class Score {
   structuresLeveled = 0;
   arenaTotal = 0;
   nextMilestone = 0;
+  /** Milestones earned but not yet announced; released one per MILESTONE_DRIP_S so callouts never stack. */
+  private milestoneQueue = 0;
+  private dripT = 0;
   /** Scoring stops when false (after the clock). */
   active = true;
   private entries = new Map<number, Entry>();
@@ -38,6 +41,8 @@ export class Score {
     this.voxelsDestroyed = 0;
     this.structuresLeveled = 0;
     this.nextMilestone = 0;
+    this.milestoneQueue = 0;
+    this.dripT = 0;
     this.active = true;
     this.entries.clear();
     this.arenaTotal = 0;
@@ -102,14 +107,21 @@ export class Score {
     const rounded = Math.round(delta);
     this.score += rounded;
     events.emit('scoreChanged', { score: this.score, delta: rounded, multiplier: this.multiplier, comboRemaining: this.comboRemaining });
-    while (this.score >= (this.nextMilestone + 1) * MILESTONE_INTERVAL) {
-      const tier = milestoneFor(this.nextMilestone);
-      this.nextMilestone++;
-      events.emit('milestone', { index: this.nextMilestone, callout: tier.callout, reward: tier.reward as MilestoneReward, score: this.score });
-    }
+    while (this.score >= (this.nextMilestone + this.milestoneQueue + 1) * MILESTONE_INTERVAL) this.milestoneQueue++;
+    if (this.milestoneQueue > 0 && this.dripT <= 0) this.releaseMilestone();
+  }
+
+  private releaseMilestone(): void {
+    const tier = milestoneFor(this.nextMilestone);
+    this.nextMilestone++;
+    this.milestoneQueue--;
+    this.dripT = SCORING.milestoneDripS;
+    events.emit('milestone', { index: this.nextMilestone, callout: tier.callout, reward: tier.reward as MilestoneReward, score: this.score });
   }
 
   update(dt: number): void {
+    if (this.dripT > 0) this.dripT -= dt;
+    if (this.milestoneQueue > 0 && this.dripT <= 0) this.releaseMilestone();
     if (this.comboRemaining > 0) {
       this.comboRemaining -= dt;
       if (this.comboRemaining <= 0) {

@@ -21,6 +21,7 @@ flowchart TB
         VM[player/ViewModel]
         DM[destruction/damage]
         DE[destruction/Debris]
+        CO[destruction/Collapse]
         EF[destruction/effects]
         PH[physics/PhysicsWorld]
         AU[audio/Synth]
@@ -60,7 +61,10 @@ flowchart TB
     DM -- carve, markDirty --> W
     DM -. hit, detonation .-> EV
     WP -. weaponFire, ammoChanged .-> EV
-    EV -. subscribed in Game .-> DE & EF & AU & SC
+    EV -. subscribed in Game .-> DE & EF & AU & SC & CO
+    CO -- cut, score, body --> W & SC & PH
+    CO -- meshArbitrary --> MW
+    CR -- onMeshed walls --> PH
     SC -. scoreChanged, structureDamaged, milestone .-> EV
     DE --> PH --> RP
     SV --> AP
@@ -197,6 +201,32 @@ sequenceDiagram
     G->>S: onDetonation → multiplier +0.5, window 2 s
 ```
 
+## Sequence: a blast triggers a collapse
+
+```mermaid
+sequenceDiagram
+    participant G as Game
+    participant C as Collapse
+    participant W as World
+    participant S as Score
+    participant P as PhysicsWorld
+    participant K as mesher.worker
+    G->>C: notify(destroyed) on every hit
+    G->>C: update(now)
+    C->>C: check(structure): seeds = voxels touching terrain
+    C->>C: flood fill support (6-neighbours)
+    C->>C: unsupported → connected clusters → release queue
+    Note over C: one cluster released per frame
+    C->>W: setVoxel(…, 0) for the cluster
+    C->>S: onDestroyed(cluster records)
+    C->>P: createClusterBody(convex hull of sampled voxels)
+    C->>K: meshArbitrary(padded cube)
+    K-->>C: buffers → mesh attached to the falling group
+    loop every frame
+        C->>C: sync mesh to body, shrink at the end of life
+    end
+```
+
 ## Sequence: one shot, from click to debris
 
 ```mermaid
@@ -328,6 +358,13 @@ classDiagram
     }
     Flow *-- Round
     Flow --> RoundResult
+    class Collapse {
+        notify(list)
+        update(now)
+        check(id)
+        release(info, cluster)
+        bodyCount
+    }
     class Score {
         number score, multiplier, comboRemaining
         number chain, bestChain
@@ -431,6 +468,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `startPlaying()`, `pause()`, `resume()`, `quitToMenu()`
   - `endRound()` — freeze, `roundEnd`, top-100 lookup, `RoundResult`
   - `toResults()`, `afterResults()`, `submitInitials(s)`, `toLeaderboard()`, `playAgain()`
+  - `setMode(m)`, `adjust(id, dir)`, `toggleSticky()`, `customCost()` — point-buy loadout within `LOADOUT.budget`
+  - `shareLink()`, `replay(theme, seed)` — `?arena=theme-SEED` links and leaderboard-row replays
   - `setRadial(open)` — 30 % time scale while the picker is open
   - `canvasClick()` — re-request pointer lock mid-round; `skipCountdown()` — debug
   - `set(state)` also starts/stops the menu music; countdown and end-freeze run on wall-clock deadlines so slow frames do not stretch them
@@ -492,6 +531,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `idle → boolean` — nothing dirty or in flight
   - `update(focus)` — send nearest dirty chunks, up to `perFrame`
   - `send(chunk)`, `onResult(response)` — worker round trip, stale-version guard
+  - `onMeshed` hook — hands fresh wall geometry to physics
+  - `meshArbitrary(vox, size, origin) → Promise` — mesh a non-chunk cube on a worker (collapse clusters)
   - `dispose()`
 - `client/src/world/WorldGen.ts` **[main]**
   - `generateWorld(theme, seed, terrainOnly) → Promise<{world, height, ms}>` — runs the gen worker once
@@ -520,7 +561,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `onDestroyed(list)` — value × multiplier for owned voxels, structureDamaged / structureLeveled events
   - `onDetonation()` — combo step and window
   - `update(dt)` — combo decay
-  - `add(delta)` — scoreChanged + milestone events
+  - `add(delta)` — scoreChanged; milestones queue and `releaseMilestone()` drips one per 0.6 s
   - `structure(id)`, `arenaPercent`
 - `client/src/player/Input.ts` **[main]**
   - `Input(canvas)` — key set, mouse buttons, wheel, movement deltas, pointer lock
@@ -550,11 +591,19 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `client/src/physics/PhysicsWorld.ts` **[main → WASM]**
   - `PhysicsWorld.init()`, `create(gravity)` — Rapier init
   - `setTerrain(height)` — static heightfield from the surface (not updated when terrain is carved)
+  - `queueChunkCollider(index, mesh)`, `buildQueuedColliders()` — trimesh colliders for chunks that hold structure voxels, one build per frame
+  - `createClusterBody(center, points, half)`, `removeBody(body)` — collapse bodies
   - `update(dt)` — fixed 60 Hz stepping, at most 2 sub-steps per frame
 - `client/src/destruction/Debris.ts` **[main]**
   - `spawn(list, center, power)` — up to 24 cuboids per blast, 300 cap, glass splits smaller; one InstancedMesh with per-instance colour
   - `update(now)` — copies body transforms into the InstancedMesh, shrinks over the last 0.5 s, expires at 4 s
   - `clear()`
+- `client/src/destruction/Collapse.ts` **[main]**
+  - `Collapse(world, physics, score, mesher)`
+  - `notify(list)` — queue a support check for each structure touched
+  - `update(now)` — one check or one cluster release per frame; sync falling bodies; expire after 12 s
+  - `check(id)` — flood fill from terrain-touching voxels over the structure's bounds; unsupported voxels → clusters
+  - `release(info, cluster)` — cut from the world, score, convex-hull body, worker mesh attached on arrival
 - `client/src/destruction/effects.ts` **[main]**
   - `blast(center, power, viewer, glass)` — shake amount from power/distance, additive flash sprite, particle burst
   - `applyShake(camera)` — random offset + roll after the controller placed the camera
@@ -571,7 +620,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `fire(state) → boolean` — melee swing, hitscan pellets, rocket spawn, grenade throw, C4 place-or-detonate
   - `throwGrenade()` — G from any weapon
   - `centreFor(hit)` — damage centre snapped to the hit voxel's centre
-  - `spawnGrenade()`, `updateGrenades(dt)` — hand-rolled ballistics with voxel raycast bounces, fuse
+  - `spawnGrenade()`, `updateGrenades(dt)` — hand-rolled ballistics with voxel raycast bounces, fuse; `sticky` stops on first contact
+  - `loadout` — custom ammo totals applied by `reset()`
   - `spawnRocket()`, `updateRockets(dt)` — raymarched flight, explodes on contact or at max range
   - `placeCharge(point, face)`, `detonateCharges()` — C4 meshes stuck to faces, all fire together
 - `client/src/player/ViewModel.ts` **[main]**
@@ -582,7 +632,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `server/src/api.ts` **[server]**
   - `createApi({db, signer, skipTimeCheck, now}) → Hono` — `GET /health`; `POST /session` (10/min per IP, signed token); `POST /score` (signature, 150–600 s window, initials + profanity, per-theme cap, single-use nonce, IP hash only); `GET /leaderboard?theme&limit` (5 s cache); `GET /qualifies?theme&score`
 - `server/src/db.ts` **[server]**
-  - `Db(file)` — `scores` table with `(theme, score DESC)` index, `used_tokens`, WAL
+  - `Db(file)` — `scores` table with `(theme, score DESC)` and `(mode, theme, score DESC)` indexes (`mode` column added by migration), `used_tokens`, WAL
   - `insertScore(row)`, `top(theme, limit)`, `rankFor(theme, score, prospective)`, `cutoff(theme)`, `useToken(nonce, now)`, `pruneTokens(now, maxAge)`, `close()`
 - `server/src/token.ts` **[server]**
   - `TokenSigner(secret)` — `sign(payload)`, `verify(token)` (timing-safe), `TokenSigner.nonce()`
@@ -649,6 +699,11 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Slow-motion round end, results count-up | `Flow.endRound`, `Flow.updateFreeze`, `ResultsScreen` |
 | Top-100 check, initials, submission, leaderboard tabs | `Flow.endRound` → `api.qualifies`, `InitialsScreen`, `Flow.submitInitials`, `LeaderboardScreen` |
 | Scores survive a restart; forged or replayed scores are rejected | `Db`, `TokenSigner`, `validate.ts`, `createApi` |
+| Debris bounces off walls | `ChunkRenderer.onMeshed` → `PhysicsWorld.queueChunkCollider` |
+| Cut-off parts of a building fall as one piece and score | `Collapse.check`, `Collapse.release` |
+| Point-buy loadout and sticky grenades | `Flow.adjust`, `Flow.toggleSticky`, `LoadoutScreen`, `Weapons.loadout`, `Weapons.sticky` |
+| Separate point-buy leaderboard | token `mode`, `Db.where`, `LeaderboardScreen` POINT-BUY tab |
+| Share an arena; replay from a leaderboard row | `Flow.shareLink`, `Flow.replay`, `main.ts` `?arena=` |
 | Contextual placement (roadside, blocks, paths, hills) | `candidates` in `placer.ts`, `Recipe.siting` |
 | Voxel outlines, bevel, hatch | `VoxelMaterial` fragment shader |
 | Menu music loop | `Synth.startMusic`, `Flow.set` |
@@ -659,11 +714,15 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 
 ## Planned, not built
 
-Modules in SPEC.md "Project structure" with no code at this commit:
+Everything in SPEC.md "Project structure" and "Build plan" now has code. Known gaps rather than missing modules:
+
+- Transparent (glass) faces have no collider, so debris passes through windows.
+- The terrain heightfield is never updated after carving.
 
 
 ## Changelog
 
+- 2026-11-04: Phase 7 — Collapse, chunk trimesh colliders, meshArbitrary, point-buy loadout, sticky grenades, share links, mode column
 - 2026-11-04: Phase 6 — music loop, aim zoom, hints, notice, wall-clock UI timers
 - 2026-11-04: Phase 5 — db.ts, token.ts, validate.ts, real api.ts; server subgraph and lifecycle sequence updated
 - 2026-11-04: Phase 4 — Flow, Round, api.ts, in-memory server routes, UI root, nine screens, eight HUD widgets; contextual siting and the outline shader; round lifecycle sequence

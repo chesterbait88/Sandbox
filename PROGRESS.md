@@ -1,5 +1,12 @@
 # Progress
 
+## Phase 7 — stretch (done)
+- Done: chunk trimesh colliders for chunks holding structure voxels (built one per frame, ~5 ms each) so debris bounces off walls; structural collapse (flood-fill support per touched structure, unsupported clusters cut, scored and dropped as convex-hull rigid bodies meshed on a worker, one cluster per frame); point-buy loadout (128-point budget, +/− per slot, sticky grenade upgrade) with its own leaderboard board (`mode` column, POINT-BUY tab, mode signed into the session token); share links (`?arena=theme-SEED`) from results and leaderboard, leaderboard rows replay their arena; milestone drip so bursts of milestones announce one at a time; debris colliders switched to balls (cheaper against walls). 29 tests, e2e still green.
+- Next: nothing left in SPEC.md. Candidates if continued: glass colliders, heightfield updates after terrain carving, a hands-on tuning pass.
+- Blockers: none.
+- FPS / timing (headless CPU): office-block collapse check 29 ms once (flood fill + cutting 20k voxels + hull) with the mesh on a worker; 144 debris against walls: physics 1.3 ms/frame avg (balls), insertion frame 19 ms; wall collider build ~5 ms each, one per frame.
+- Open decisions: see DECISIONS.md.
+
 ## Phase 6 — polish (done)
 - Done (new): synth menu music loop (bass + arpeggio, stops on deploy), aim zoom on Mouse 2, control hint on the countdown and the first 9 s of a round, desktop-only notice for touch devices, OpenGraph/description meta + `og.svg`, pointer lock requested on the DEPLOY click with click-to-relock and an Esc debounce, round end no longer trips the lock-loss pause, countdown and end-freeze on wall-clock deadlines, loadout models framed closer. Already in from earlier phases: transitions, number ticks, hit markers, muzzle flash, weapon bob, theme sky/fog, slow-mo round end, favicon, settings persisted to localStorage.
 - Next: phase 7 stretch only if budget remains (trimesh colliders, structural collapse, point-buy loadouts, sticky grenades, replay links). First: a hands-on pass in a real browser is the one check this sandbox cannot do (pointer lock, audio, GPU fps).

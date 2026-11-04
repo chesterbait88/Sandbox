@@ -12,6 +12,7 @@ export interface ScoreRow {
   stats_json: string;
   ip_hash: string;
   created_at: string;
+  mode: string;
 }
 
 export interface Entry {
@@ -20,6 +21,7 @@ export interface Entry {
   score: number;
   date: string;
   seed: string;
+  theme: string;
 }
 
 /** SQLite storage: one file under DATA_DIR (or in memory for tests). */
@@ -42,6 +44,12 @@ export class Db {
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
       );
       CREATE INDEX IF NOT EXISTS scores_theme_score ON scores(theme, score DESC);
+    `);
+    // Added after launch of the fixed-loadout board: point-buy scores live on their own board.
+    const cols = (this.db.prepare('PRAGMA table_info(scores)').all() as { name: string }[]).map((c) => c.name);
+    if (!cols.includes('mode')) this.db.exec("ALTER TABLE scores ADD COLUMN mode TEXT NOT NULL DEFAULT 'fixed'");
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS scores_mode_theme_score ON scores(mode, theme, score DESC);
       CREATE TABLE IF NOT EXISTS used_tokens (
         nonce TEXT PRIMARY KEY,
         used_at INTEGER NOT NULL
@@ -51,39 +59,37 @@ export class Db {
 
   insertScore(row: Omit<ScoreRow, 'id' | 'created_at'>): number {
     const r = this.db
-      .prepare('INSERT INTO scores (theme, seed, initials, score, stats_json, ip_hash) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(row.theme, row.seed, row.initials, row.score, row.stats_json, row.ip_hash);
+      .prepare('INSERT INTO scores (theme, seed, initials, score, stats_json, ip_hash, mode) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(row.theme, row.seed, row.initials, row.score, row.stats_json, row.ip_hash, row.mode);
     return Number(r.lastInsertRowid);
   }
 
-  top(theme: string, limit: number): Entry[] {
-    const rows =
-      theme === 'all'
-        ? this.db.prepare('SELECT initials, score, seed, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?').all(limit)
-        : this.db.prepare('SELECT initials, score, seed, created_at FROM scores WHERE theme = ? ORDER BY score DESC, created_at ASC LIMIT ?').all(theme, limit);
-    return (rows as { initials: string; score: number; seed: string; created_at: string }[]).map((r, i) => ({ rank: i + 1, initials: r.initials, score: r.score, date: r.created_at.slice(0, 10), seed: r.seed }));
+  /** WHERE clause and params for a board: mode always, theme unless 'all'. */
+  private where(theme: string, mode: string): { sql: string; params: (string | number)[] } {
+    return theme === 'all' ? { sql: 'WHERE mode = ?', params: [mode] } : { sql: 'WHERE mode = ? AND theme = ?', params: [mode, theme] };
+  }
+
+  top(theme: string, limit: number, mode = 'fixed'): Entry[] {
+    const w = this.where(theme, mode);
+    const rows = this.db.prepare(`SELECT initials, score, seed, theme, created_at FROM scores ${w.sql} ORDER BY score DESC, created_at ASC LIMIT ?`).all(...w.params, limit);
+    return (rows as { initials: string; score: number; seed: string; theme: string; created_at: string }[]).map((r, i) => ({ rank: i + 1, initials: r.initials, score: r.score, date: r.created_at.slice(0, 10), seed: r.seed, theme: r.theme }));
   }
 
   /**
    * 1-based rank. Before insertion (`prospective`) a score ranks below existing equal scores;
    * after insertion its rank counts only strictly higher scores, so ties share a rank.
    */
-  rankFor(theme: string, score: number, prospective = false): number {
+  rankFor(theme: string, score: number, prospective = false, mode = 'fixed'): number {
     const op = prospective ? '>=' : '>';
-    const r =
-      theme === 'all'
-        ? (this.db.prepare(`SELECT COUNT(*) AS n FROM scores WHERE score ${op} ?`).get(score) as { n: number })
-        : (this.db.prepare(`SELECT COUNT(*) AS n FROM scores WHERE theme = ? AND score ${op} ?`).get(theme, score) as { n: number });
+    const w = this.where(theme, mode);
+    const r = this.db.prepare(`SELECT COUNT(*) AS n FROM scores ${w.sql} AND score ${op} ?`).get(...w.params, score) as { n: number };
     return r.n + 1;
   }
 
   /** Score of the last leaderboard slot, or null when the board is not full. */
-  cutoff(theme: string): number | null {
-    const size = SCORING.leaderboardSize;
-    const rows =
-      theme === 'all'
-        ? this.db.prepare('SELECT score FROM scores ORDER BY score DESC LIMIT 1 OFFSET ?').all(size - 1)
-        : this.db.prepare('SELECT score FROM scores WHERE theme = ? ORDER BY score DESC LIMIT 1 OFFSET ?').all(theme, size - 1);
+  cutoff(theme: string, mode = 'fixed'): number | null {
+    const w = this.where(theme, mode);
+    const rows = this.db.prepare(`SELECT score FROM scores ${w.sql} ORDER BY score DESC LIMIT 1 OFFSET ?`).all(...w.params, SCORING.leaderboardSize - 1);
     const r = rows[0] as { score: number } | undefined;
     return r ? r.score : null;
   }

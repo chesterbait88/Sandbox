@@ -31,12 +31,12 @@ What each screen does:
 - **Start menu**: title, PLAY / LEADERBOARD / SETTINGS / CREDITS, and a "best" strip with the top score on record. A synth music loop plays on every screen outside the round (it starts after the first click, as browsers require).
 - **Phones and tablets** get a "desktop only" notice instead of the game.
 - **World picker**: three theme cards (name, description, top score), a seed field with a dice button. Clicking a card rebuilds the arena behind the screen so you see what you picked.
-- **Loadout**: the eight slots with spinning models, ammo and role, plus the arena's total points standing and the round length. DEPLOY.
+- **Loadout**: the eight slots with spinning models, ammo and role, plus the arena's total points standing and the round length. FIXED KIT is the default; POINT-BUY opens a 128-point budget where every slot has +/− buttons with a price per round, plus a STICKY GRENADES upgrade. Point-buy rounds score on their own leaderboard. DEPLOY.
 - **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad, with a one-line control hint that stays for the first few seconds of the round.
 - **Pause**: Esc releases the mouse; RESUME / SETTINGS (sensitivity, volume, FOV, remembered) / QUIT TO MENU.
 - **Results**: a 1.5 s slow-motion freeze, then structures leveled, voxels destroyed, biggest chain, arena wrecked and the final score count up. Says whether you made the top 100 or how many more points you needed.
 - **Initials**: three arcade letter columns. Type, or use the arrows; ENTER submits.
-- **Leaderboard**: tabs per theme plus ALL, top 10, your row highlighted, PLAY AGAIN. Scores are kept on the server; a score only counts if it comes from a real round (a signed session, submitted once, between 2.5 and 10 minutes after deploying, under a per-theme ceiling). Rude initials become `???`.
+- **Leaderboard**: tabs per theme plus ALL and POINT-BUY, top 10, your row highlighted, PLAY AGAIN. Clicking a row replays that arena. SHARE ARENA (also on the results screen) copies a link that opens the picker with the same theme and seed. Scores are kept on the server; a score only counts if it comes from a real round (a signed session, submitted once, between 2.5 and 10 minutes after deploying, under a per-theme ceiling). Rude initials become `???`.
 
 ## The in-round loop
 
@@ -88,6 +88,22 @@ flowchart TD
     D --> S
 ```
 
+## When a building loses its legs
+
+After every blast, the game checks whether what is left of that structure still reaches the ground. Anything cut off falls as one piece and pays out as if you had destroyed it.
+
+```mermaid
+flowchart TD
+    B[Blast touches a structure] --> C[Find every block of it<br/>that still touches terrain]
+    C --> F[Spread support through<br/>connected blocks]
+    F --> U{Blocks left<br/>unsupported?}
+    U -->|no| N[Nothing happens]
+    U -->|yes| R[Each cut-off chunk<br/>is removed and scored]
+    R --> D[It drops as one rigid piece,<br/>lands on walls and ground, fades out]
+```
+
+Debris also bounces off walls now, not only the ground.
+
 ## Scoring as it works now
 
 Only structure voxels pay. Terrain is free to dig. Each destroyed structure voxel pays its material's value (glass 1 … steel 8) times the current combo multiplier.
@@ -104,7 +120,7 @@ stateDiagram-v2
     end note
 ```
 
-Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock.
+Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock. Several milestones earned at once are announced one after another.
 
 ## A dramatic moment: grenade through a brick wall
 
@@ -154,7 +170,7 @@ Everyone carries the same eight slots. Ammo is for the whole round; nothing refi
 | 4 | Shotgun | Eight pellets in a cone | Walls up close, even concrete | 6 per mag, 30 total |
 | 5 | Rifle | Full auto, 10 per second | Brick and concrete | 30 per mag, 120 total |
 | 6 | Rocket launcher | Explodes on contact, 3 m sphere | Whole walls at range | 6 |
-| 7 | Grenade | Bounces, 3 s fuse, 2.5 m sphere | Rooms and anything soft | 8 |
+| 7 | Grenade | Bounces, 3 s fuse, 2.5 m sphere (sticky upgrade: stops where it lands) | Rooms and anything soft | 8 |
 | 8 | C4 | Stuck to a surface, 4 m sphere, all charges fire together | Concrete | 4 |
 
 ## The arenas and what stands in them
@@ -192,10 +208,12 @@ Same theme and seed always build the same arena. Structures never float: each st
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
 - Live low-res renders on the theme cards (cards are stylised art; the arena behind the picker is the live one).
+- Debris passing through glass (walls are solid for debris, glass is not).
 
 
 ## Changelog
 
+- 2026-11-04: Phase 7 — structural collapse, debris bouncing off walls, point-buy loadouts with their own board, sticky grenades, share links
 - 2026-11-04: Phase 6 — menu music, aim zoom, control hints, desktop-only notice, pointer-lock robustness
 - 2026-11-04: Phase 5 — scores persist on the server with signed sessions and validation
 - 2026-11-04: Phase 4 — all screens, the round clock, HUD, radial picker, pause, results, initials, leaderboard; palette, outlines and contextual siting from user requests

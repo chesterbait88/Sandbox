@@ -104,6 +104,11 @@ export class StructureCtx {
         }
   }
 
+  bounds(): { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number } {
+    if (this.voxels === 0) return { x0: this.origin.x, y0: this.origin.y, z0: this.origin.z, x1: this.origin.x, y1: this.origin.y, z1: this.origin.z };
+    return { x0: this.minX, y0: this.minY, z0: this.minZ, x1: this.maxX, y1: this.maxY, z1: this.maxZ };
+  }
+
   /** Centre of everything placed, in metres. */
   center(): { x: number; y: number; z: number } {
     if (this.voxels === 0) return { x: this.origin.x * 0.5, y: this.origin.y * 0.5, z: this.origin.z * 0.5 };

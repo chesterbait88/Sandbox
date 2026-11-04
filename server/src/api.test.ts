@@ -102,6 +102,16 @@ describe('api', () => {
     expect(cleanInitials('ASS')).toBe('???');
   });
 
+  it('custom-loadout scores live on their own board', async () => {
+    const s = await json(m.post('/api/session', { theme: 'desert', seed: 'S', mode: 'custom' }));
+    m.advance(200_000);
+    const r = await json(m.post('/api/score', { token: s.token, initials: 'PBY', score: 777 }));
+    expect(r.accepted).toBe(true);
+    expect((await json(m.get('/api/leaderboard?theme=desert'))).entries).toHaveLength(0);
+    expect((await json(m.get('/api/leaderboard?theme=desert&mode=custom'))).entries[0]).toMatchObject({ initials: 'PBY', score: 777 });
+    expect((await json(m.get('/api/qualifies?theme=desert&score=1&mode=custom'))).rank).toBe(2);
+  });
+
   it('leaderboard is cached for 5 s and invalidated by a submission', async () => {
     const first = await json(m.get('/api/leaderboard?theme=all'));
     expect(first.entries).toHaveLength(0);

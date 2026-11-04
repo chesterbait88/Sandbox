@@ -37,3 +37,10 @@
 - **UI timers (countdown, round-end freeze) use wall-clock deadlines**, not accumulated frame time, because the frame loop clamps dt at 50 ms and a slow machine would stretch a 3 s countdown to 10 s.
 - **Pointer lock is requested on the DEPLOY click** (the gesture) and again on any canvas click while playing; losing the lock pauses only while the clock is running.
 - **Menu music is a scheduled synth loop** (`MUSIC` chords in `config/effects.ts`), started on menu screens and after the first gesture resumes the AudioContext.
+- **Collapsed clusters pay points** as if destroyed (they are removed from the world and scored through the same path), so dropping a building's upper floors is rewarded. Clusters under 6 voxels are deleted silently; over 60,000 are deleted without a body.
+- **Collapse meshing happens on the mesher worker** (`meshArbitrary`); the body starts falling immediately and the mesh pops in when it arrives (tens to hundreds of ms behind remeshes in the queue). One cluster is released per frame.
+- **Wall colliders only for chunks that hold structure voxels**, as trimeshes built from the opaque mesh (glass has none), one per frame. Terrain stays on the heightfield.
+- **Debris colliders are balls** (visual stays a cube): against trimeshes, cubes cost about twice as much on the insertion frame.
+- **Milestones drip** one per 0.6 s when several are earned at once (a collapse can add 30k points in one call); rewards follow the announcements.
+- **Point-buy budget is 128**, exactly the cost of the fixed kit at the per-round prices in `config/loadout.ts`; the server signs the mode into the session token so a client cannot post a point-buy score to the fixed board.
+- **Share links use `?arena=theme-SEED`**; `?theme`/`?seed` remain debug parameters so screenshots and probes keep landing on the menu.

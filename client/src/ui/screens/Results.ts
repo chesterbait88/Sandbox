@@ -33,7 +33,12 @@ export class ResultsScreen extends Screen {
     panel.append(final);
     this.note = h('p', 'note', '');
     this.cont = button('CONTINUE', 'primary big', () => flow.afterResults());
-    panel.append(this.note, this.cont);
+    const share = button('SHARE ARENA', '', () => {
+      navigator.clipboard?.writeText(flow.shareLink()).then(() => (share.textContent = 'LINK COPIED'), () => (share.textContent = flow.shareLink()));
+    });
+    const nav = h('div', 'nav');
+    nav.append(share, this.cont);
+    panel.append(this.note, nav);
     this.el.append(panel);
   }
 

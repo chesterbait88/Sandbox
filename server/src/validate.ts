@@ -5,6 +5,10 @@ const PROFANITY = new Set(['ASS', 'FUK', 'FUC', 'FCK', 'CUM', 'DIK', 'DIC', 'COK
 
 export const INITIALS_RE = /^[A-Z ]{3}$/;
 
+export function modeOf(m: unknown): 'fixed' | 'custom' {
+  return m === 'custom' ? 'custom' : 'fixed';
+}
+
 export function isTheme(t: unknown): t is (typeof THEME_IDS)[number] {
   return typeof t === 'string' && (THEME_IDS as string[]).includes(t);
 }
