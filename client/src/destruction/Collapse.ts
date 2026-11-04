@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { COLLAPSE, VOXEL_SIZE } from '@vw/config';
-import { voxelIndex, World, type StructureInfo } from '../world/World';
+import { SX, SY, SZ, voxelIndex, World, type StructureInfo } from '../world/World';
+import type { SupportRequest, SupportResponse } from './support.worker';
 import type { PhysicsWorld } from '../physics/PhysicsWorld';
 import { buildGeometry, createOpaqueMaterial, createTransparentMaterial } from '../world/VoxelMaterial';
 import type { ChunkRenderer } from '../world/ChunkRenderer';
@@ -28,18 +29,26 @@ export class Collapse {
   private mats = { opaque: createOpaqueMaterial(), transparent: createTransparentMaterial() };
   private dummy = new THREE.Object3D();
   private now = 0;
-  stats = { checks: 0, lastCheckMs: 0, clusters: 0, fillMs: 0, cutMs: 0, scoreMs: 0, meshMs: 0, bodyMs: 0 };
+  /** Support checks run on a worker; one in flight per structure. */
+  private worker: Worker;
+  private inFlight = new Map<number, number>();
+  private seq = 0;
+  stats = { checks: 0, lastCheckMs: 0, clusters: 0, fillMs: 0, workerMs: 0, cutMs: 0, scoreMs: 0, meshMs: 0, bodyMs: 0 };
 
   constructor(
     private world: World,
     private physics: PhysicsWorld,
     private score: Score,
     private mesher: ChunkRenderer
-  ) {}
+  ) {
+    this.worker = new Worker(new URL('./support.worker.ts', import.meta.url), { type: 'module' });
+    this.worker.onmessage = (e: MessageEvent<SupportResponse>) => this.onSupport(e.data);
+  }
 
   setWorld(world: World): void {
     this.world = world;
     this.pending.clear();
+    this.inFlight.clear();
     this.releaseQueue = [];
     this.clear();
   }
@@ -78,104 +87,57 @@ export class Collapse {
     }
   }
 
+  /** Copy the structure's padded bounding box out of the world and ask the worker which voxels are unsupported. */
   private check(id: number): void {
     const info = this.world.structures.find((s) => s.id === id);
-    if (!info) return;
+    if (!info || this.inFlight.has(id)) return;
     const t0 = performance.now();
     const b = info.bounds;
     const W = b.x1 - b.x0 + 1;
     const H = b.y1 - b.y0 + 1;
     const D = b.z1 - b.z0 + 1;
-    const n = W * H * D;
-    const mat = this.world.mat;
-    const owner = this.world.owner;
-    // 0 = not this structure, 1 = unvisited structure voxel, 2 = supported
-    const mark = new Uint8Array(n);
-    const stack = new Int32Array(n);
-    let sp = 0;
-    let count = 0;
-    const li = (x: number, y: number, z: number) => x - b.x0 + W * (y - b.y0 + H * (z - b.z0));
-    for (let z = b.z0; z <= b.z1; z++)
-      for (let y = b.y0; y <= b.y1; y++)
-        for (let x = b.x0; x <= b.x1; x++) {
-          const wi = voxelIndex(x, y, z);
-          if (owner[wi] !== id || mat[wi] === 0) continue;
-          const k = li(x, y, z);
-          mark[k] = 1;
-          count++;
-          // Seed: touching terrain (anything solid that is not this structure).
-          if (this.touchesGround(x, y, z, id)) {
-            mark[k] = 2;
-            stack[sp++] = k;
-          }
+    const PW = W + 2;
+    const PH = H + 2;
+    const mat = new Uint8Array(PW * PH * (D + 2));
+    const owner = new Uint16Array(mat.length);
+    const wm = this.world.mat;
+    const wo = this.world.owner;
+    for (let z = -1; z <= D; z++) {
+      const wz = b.z0 + z;
+      if (wz < 0 || wz >= SZ) continue;
+      for (let y = -1; y <= H; y++) {
+        const wy = b.y0 + y;
+        if (wy < 0 || wy >= SY) continue;
+        const x0 = Math.max(0, b.x0 - 1);
+        const x1 = Math.min(SX - 1, b.x1 + 1);
+        const src = voxelIndex(x0, wy, wz);
+        const dst = x0 - b.x0 + 1 + PW * (y + 1 + PH * (z + 1));
+        // Element loops: thousands of subarray views cost more than the bytes they copy.
+        for (let i = 0, n = x1 - x0 + 1; i < n; i++) {
+          mat[dst + i] = wm[src + i];
+          owner[dst + i] = wo[src + i];
         }
-    if (count === 0) return;
-    const tFill = performance.now();
-    // Flood fill support through 6-neighbours.
-    while (sp > 0) {
-      const k = stack[--sp];
-      const x = k % W;
-      const y = ((k / W) | 0) % H;
-      const z = (k / (W * H)) | 0;
-      const tryN = (nx: number, ny: number, nz: number) => {
-        if (nx < 0 || ny < 0 || nz < 0 || nx >= W || ny >= H || nz >= D) return;
-        const nk = nx + W * (ny + H * nz);
-        if (mark[nk] === 1) {
-          mark[nk] = 2;
-          stack[sp++] = nk;
-        }
-      };
-      tryN(x - 1, y, z);
-      tryN(x + 1, y, z);
-      tryN(x, y - 1, z);
-      tryN(x, y + 1, z);
-      tryN(x, y, z - 1);
-      tryN(x, y, z + 1);
-    }
-    this.stats.fillMs = performance.now() - tFill;
-    // Unsupported voxels → connected clusters.
-    for (let k = 0; k < n; k++) {
-      if (mark[k] !== 1) continue;
-      const cluster: number[] = [];
-      mark[k] = 3;
-      stack[0] = k;
-      sp = 1;
-      while (sp > 0) {
-        const c = stack[--sp];
-        cluster.push(c);
-        const x = c % W;
-        const y = ((c / W) | 0) % H;
-        const z = (c / (W * H)) | 0;
-        const tryN = (nx: number, ny: number, nz: number) => {
-          if (nx < 0 || ny < 0 || nz < 0 || nx >= W || ny >= H || nz >= D) return;
-          const nk = nx + W * (ny + H * nz);
-          if (mark[nk] === 1) {
-            mark[nk] = 3;
-            stack[sp++] = nk;
-          }
-        };
-        tryN(x - 1, y, z);
-        tryN(x + 1, y, z);
-        tryN(x, y - 1, z);
-        tryN(x, y + 1, z);
-        tryN(x, y, z - 1);
-        tryN(x, y, z + 1);
       }
-      this.releaseQueue.push({ info, cluster, W, H });
     }
+    const seq = ++this.seq;
+    this.inFlight.set(id, seq);
+    const req: SupportRequest = { type: 'support', seq, id, W, H, D, mat, owner, bedrockBelow: b.y0 === 0 };
+    this.worker.postMessage(req, [mat.buffer, owner.buffer]);
     this.stats.checks++;
     this.stats.lastCheckMs = performance.now() - t0;
   }
 
-  private touchesGround(x: number, y: number, z: number, id: number): boolean {
-    const w = this.world;
-    const g = (nx: number, ny: number, nz: number) => {
-      if (ny < 0) return true;
-      if (!w.inBounds(nx, ny, nz)) return false;
-      const i = voxelIndex(nx, ny, nz);
-      return w.mat[i] !== 0 && w.owner[i] !== id;
-    };
-    return g(x, y - 1, z) || g(x - 1, y, z) || g(x + 1, y, z) || g(x, y, z - 1) || g(x, y, z + 1);
+  private onSupport(r: SupportResponse): void {
+    if (this.inFlight.get(r.id) !== r.seq) return; // stale (world reloaded)
+    this.inFlight.delete(r.id);
+    const info = this.world.structures.find((s) => s.id === r.id);
+    if (!info) return;
+    this.stats.fillMs = r.fillMs;
+    this.stats.workerMs = r.ms;
+    const b = info.bounds;
+    const W = b.x1 - b.x0 + 1;
+    const H = b.y1 - b.y0 + 1;
+    for (const c of r.clusters) this.releaseQueue.push({ info, cluster: Array.from(c), W, H });
   }
 
   /** Cut a cluster out of the world, score it, and drop it as a body (or just delete it). */
@@ -189,10 +151,12 @@ export class Collapse {
       const y = b.y0 + (((k / W) | 0) % H);
       const z = b.z0 + ((k / (W * H)) | 0);
       const wi = voxelIndex(x, y, z);
+      if (world.mat[wi] === 0 || world.owner[wi] !== info.id) continue; // changed since the check
       destroyed.push({ x, y, z, mat: world.mat[wi], owner: info.id });
       if (x < minX) minX = x; if (y < minY) minY = y; if (z < minZ) minZ = z;
       if (x > maxX) maxX = x; if (y > maxY) maxY = y; if (z > maxZ) maxZ = z;
     }
+    if (destroyed.length === 0) return;
     let t = performance.now();
     const makeBody = cluster.length >= COLLAPSE.minBodyVoxels && cluster.length <= COLLAPSE.maxBodyVoxels && this.falling.length < COLLAPSE.maxBodies;
     let vox: Uint8Array | null = null;
@@ -202,7 +166,14 @@ export class Collapse {
       vox = new Uint8Array(P * P * P);
       for (const d of destroyed) vox[d.x - minX + 1 + P * (d.z - minZ + 1 + P * (d.y - minY + 1))] = d.mat;
     }
-    for (const d of destroyed) world.setVoxel(d.x, d.y, d.z, 0, 0);
+    const wm = world.mat;
+    const wo = world.owner;
+    for (const d of destroyed) {
+      const wi = voxelIndex(d.x, d.y, d.z);
+      wm[wi] = 0;
+      wo[wi] = 0;
+    }
+    world.markDirtyBox(minX, minY, minZ, maxX, maxY, maxZ);
     this.stats.cutMs = performance.now() - t;
     t = performance.now();
     this.score.onDestroyed(destroyed);

@@ -76,15 +76,25 @@ export class Score {
     if (!this.active) return;
     let delta = 0;
     const touched = new Map<number, Entry>();
-    for (const v of list) {
-      if (v.owner === 0) continue;
-      const e = this.entries.get(v.owner);
+    // Lists are mostly one owner: resolve the entry only when the owner changes.
+    let lastOwner = 0;
+    let e: Entry | undefined;
+    let raw = 0;
+    for (let i = 0; i < list.length; i++) {
+      const v = list[i];
+      const o = v.owner;
+      if (o === 0) continue;
+      if (o !== lastOwner) {
+        lastOwner = o;
+        e = this.entries.get(o);
+        if (e) touched.set(o, e);
+      }
       if (!e) continue;
       const value = valueOf[v.mat];
       e.destroyedValue += value;
-      delta += value * this.multiplier;
-      touched.set(v.owner, e);
+      raw += value;
     }
+    delta += raw * this.multiplier;
     for (const e of touched.values()) {
       const percent = e.info.totalValue ? e.destroyedValue / e.info.totalValue : 1;
       events.emit('structureDamaged', { id: e.info.id, name: e.info.name, percent: Math.min(1, percent), value: Math.round(e.destroyedValue), totalValue: e.info.totalValue, destroyedValue: e.destroyedValue });

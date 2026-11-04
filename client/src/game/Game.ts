@@ -42,6 +42,8 @@ export class Game {
   /** Exposed for the gallery and probe scripts, so they never hardcode the scale. */
   readonly voxelSize = VOXEL_SIZE;
   readonly worldSize = WORLD_SIZE_M;
+  /** The gameplay event bus, exposed for probes. */
+  readonly events = events;
   /** Global time scale (slow-mo). */
   timeScale = 1;
   /** Game time in ms, scaled. */
@@ -115,6 +117,11 @@ export class Game {
       this.physics.world.step();
       this.debris?.update(this.time);
     }
+    // Compile every shader variant while the warm-up debris, flashes and particles are in the scene,
+    // so the first real blast does not stall on program compilation.
+    this.effects.blast({ x: 0, y: -50, z: 0 }, 90, { x: 0, y: -49, z: 0 });
+    this.gfx.renderer.compile(this.gfx.scene, this.gfx.camera);
+    this.gfx.renderer.compile(this.gfx.overlayScene, this.gfx.overlayCamera);
     this.warming = false;
     this.debris?.clear();
   }

@@ -88,6 +88,8 @@ export class Destruction {
     const dedupe = VOLATILE.dedupeRadiusM;
 
     const rv2 = rv * rv;
+    // Bounds of what actually changed, so the dirty chunks are marked once per blast, not per voxel.
+    let dx0 = Infinity, dy0 = Infinity, dz0 = Infinity, dx1 = -Infinity, dy1 = -Infinity, dz1 = -Infinity;
     for (let y = y0; y <= y1; y++) {
       const dy = y + 0.5 - cy;
       const dy2 = dy * dy;
@@ -122,7 +124,9 @@ export class Destruction {
           if (shattersOf[m]) glass++;
           mat[i] = 0;
           owner[i] = 0;
-          world.markDirty(x, y, z);
+          if (x < dx0) dx0 = x; if (x > dx1) dx1 = x;
+          if (y < dy0) dy0 = y; if (y > dy1) dy1 = y;
+          if (z < dz0) dz0 = z; if (z > dz1) dz1 = z;
           const vol = volatileOf[m];
           if (vol) {
             const p = { x: (x + 0.5) * VOXEL_SIZE, y: (y + 0.5) * VOXEL_SIZE, z: (z + 0.5) * VOXEL_SIZE };
@@ -135,6 +139,7 @@ export class Destruction {
         }
       }
     }
+    if (destroyed.length) world.markDirtyBox(dx0, dy0, dz0, dx1, dy1, dz1);
     events.emit('hit', { center, radius, power, destroyed, source, glass });
     // The list is a fresh array (cheap); the records in it are pooled and reused on the next call.
     return destroyed.slice();

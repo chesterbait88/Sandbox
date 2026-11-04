@@ -25,6 +25,8 @@ export class Debris {
   private dummy = new THREE.Object3D();
   private color = new THREE.Color();
   private now = 0;
+  /** Pieces waiting for a body (spread over frames so one blast never inserts them all at once). */
+  private queue: { v: Destroyed; center: Vec3; power: number }[] = [];
 
   constructor(private physics: PhysicsWorld) {
     const geo = new THREE.BoxGeometry(1, 1, 1);
@@ -60,7 +62,17 @@ export class Debris {
       const stride = list.length / n;
       for (let i = 0; i < n; i++) picks.push(list[Math.min(list.length - 1, Math.floor(i * stride + Math.random() * stride))]);
     }
-    for (const v of picks) {
+    for (const v of picks) this.queue.push({ v: { ...v }, center: { ...center }, power });
+    this.insertQueued();
+  }
+
+  /** Insert up to DEBRIS.insertPerFrame queued pieces as rigid bodies. */
+  private insertQueued(): void {
+    const R = this.physics.R;
+    let n = 0;
+    while (this.queue.length && n < DEBRIS.insertPerFrame) {
+      const { v, center, power } = this.queue.shift()!;
+      n++;
       const glass = MATERIALS[v.mat]?.shatters;
       const count = glass ? DEBRIS.glassCountMul : 1;
       const size = DEBRIS.sizeM * (glass ? DEBRIS.glassSizeMul : 1);
@@ -107,6 +119,7 @@ export class Debris {
 
   update(now: number): void {
     this.now = now;
+    if (this.queue.length) this.insertQueued();
     for (let i = this.pieces.length - 1; i >= 0; i--) {
       if (now - this.pieces[i].born > DEBRIS.lifetimeS * 1000) this.kill(i);
     }
@@ -135,6 +148,7 @@ export class Debris {
   }
 
   clear(): void {
+    this.queue.length = 0;
     while (this.pieces.length) this.kill(0);
     this.mesh.count = 0;
   }

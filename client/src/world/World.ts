@@ -122,6 +122,17 @@ export class World {
     if (lz === CS - 1 && cz < CZ - 1) this.dirty[chunkIndex(cx, cy, cz + 1)] = 1;
   }
 
+  /** Mark every chunk overlapping the inclusive voxel box dirty, plus a one-voxel border (for face culling). */
+  markDirtyBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void {
+    const cx0 = Math.max(0, (x0 - 1) >> CSHIFT);
+    const cy0 = Math.max(0, (y0 - 1) >> CSHIFT);
+    const cz0 = Math.max(0, (z0 - 1) >> CSHIFT);
+    const cx1 = Math.min(CX - 1, (x1 + 1) >> CSHIFT);
+    const cy1 = Math.min(CY - 1, (y1 + 1) >> CSHIFT);
+    const cz1 = Math.min(CZ - 1, (z1 + 1) >> CSHIFT);
+    for (let cy = cy0; cy <= cy1; cy++) for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) this.dirty[chunkIndex(cx, cy, cz)] = 1;
+  }
+
   /** Highest solid voxel y at a column, or -1. */
   surfaceY(x: number, z: number): number {
     if (x < 0 || z < 0 || x >= SX || z >= SZ) return -1;

@@ -1,6 +1,8 @@
 export const DEBRIS = {
   /** Max voxels turned into debris per blast. */
   perBlast: 24,
+  /** Rigid bodies inserted per frame; the rest of a blast's pieces follow on the next frames. */
+  insertPerFrame: 8,
   /** Global live cap. */
   cap: 300,
   sizeM: 0.3,
@@ -60,7 +62,9 @@ export const PHYSICS = {
   /** Chunk trimesh colliders (walls) for debris: built only for chunks that hold structure voxels, this many per frame. */
   chunkCollidersPerFrame: 1,
   /** The terrain heightfield is rebuilt this often (s) when craters changed it, so debris rests in holes. */
-  heightfieldRefreshS: 1
+  heightfieldRefreshS: 1,
+  /** Heightfield sample spacing (m): coarser than the voxel grid, since every falling body pays per cell it covers. */
+  heightfieldStepM: 0.5
 } as const;
 
 /** Structural collapse: unsupported clusters of a structure fall as one rigid body. */
@@ -72,8 +76,10 @@ export const COLLAPSE = {
   maxBodies: 10,
   lifetimeS: 12,
   shrinkS: 1,
+  /** Collider for a falling cluster: 'cuboid' (bounds box, cheap) or 'hull' (convex hull of sampled voxels). */
+  collider: 'cuboid' as 'cuboid' | 'hull',
   /** Points sampled for the convex hull collider. */
-  hullSamples: 320,
+  hullSamples: 64,
   /** Support checks run at most this many per frame. */
   checksPerFrame: 1,
   /** Blast feedback when a cluster lets go. */
