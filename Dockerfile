@@ -9,7 +9,7 @@ COPY client/package.json client/
 COPY server/package.json server/
 RUN pnpm install
 COPY . .
-RUN pnpm -r build && pnpm --filter @vw/server deploy --prod /app/deploy
+RUN pnpm -r build && pnpm --filter @vw/server deploy --legacy --prod /app/deploy
 
 FROM node:20-alpine
 WORKDIR /app

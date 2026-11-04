@@ -1,5 +1,28 @@
 # Progress
 
+## Final state (end of run)
+
+**Works** (verified headless with Vitest, a DOM-driven end-to-end round and Playwright screenshots; see the phase sections below for details):
+- Menu → world picker (3 themes, seed, dice, live arena behind) → loadout (fixed kit or 128-point point-buy with sticky grenades) → countdown → 3-minute round → slow-mo → results → initials → leaderboard (per theme, ALL, POINT-BUY; rows replay their arena; share links) → play again.
+- Hand-written voxel engine: 8.4 M voxels, greedy mesher with AO in two Workers, per-voxel outline/bevel/hatch shader, arcade palette with hazard-striped volatiles.
+- Three arenas with 14 structure types sited contextually (roadside, blocks, sidewalks, paths, hills, centre, edge), deterministic per seed.
+- Eight weapons through one damage path; chain reactions; Rapier debris that bounces off walls and settles into craters; structural collapse of unsupported clusters; shake, flash, sparks, synthesized sound and menu music.
+- Scoring with combos, leveled bonuses and dripped milestones; HUD; settings persisted.
+- Server: SQLite under `DATA_DIR`, HMAC single-use sessions, time window, score caps, profanity filter, rate limit, cache; forged, early, oversized and replayed scores rejected; scores survive restarts.
+- `pnpm install && pnpm build && pnpm start` from a clean checkout (verified), `pnpm test` (29 tests), `pnpm screenshots`, `pnpm diagrams`, `node scripts/dev/e2e.mjs`.
+
+**Does not work / not verified here:**
+- Anything needing a real GPU, pointer lock or speakers was not exercised by a human: mouse look, aiming feel, audio levels, real frame rate. The controller, weapons and audio code paths were driven headlessly.
+- Debris passes through glass (no collider for transparent faces).
+- Docker: see the line below this list, updated after the build attempt.
+
+**Measured numbers** (headless Chromium on the sandbox CPU, software GL, so GPU-bound fps is unknown):
+- Mesher: 2.7–4 ms per 32³ chunk in a Worker; world generation 80–150 ms in a Worker.
+- Carve: 1–6 ms for a 5 m fuel detonation (2–3k voxels) after warm-up; C4 blast frame 7–10 ms including debris spawn.
+- Physics: 144–300 debris 1.3–2.7 ms per frame steady; insertion frame after a blast 19 ms (balls) vs 37 ms (cubes); wall collider build ~5 ms, one per frame.
+- Collapse: office-block support check + cut 29 ms once per blast that touches it; cluster mesh built on a Worker.
+- The frame loop's own CPU work stays under the 16 ms target in normal play; outliers in this sandbox were attributed to its CPU (GC/scheduling), not reproducible in node.
+
 ## Phase 7 — stretch (done)
 - Done: chunk trimesh colliders for chunks holding structure voxels (built one per frame, ~5 ms each) so debris bounces off walls; structural collapse (flood-fill support per touched structure, unsupported clusters cut, scored and dropped as convex-hull rigid bodies meshed on a worker, one cluster per frame); point-buy loadout (128-point budget, +/− per slot, sticky grenade upgrade) with its own leaderboard board (`mode` column, POINT-BUY tab, mode signed into the session token); share links (`?arena=theme-SEED`) from results and leaderboard, leaderboard rows replay their arena; milestone drip so bursts of milestones announce one at a time; debris colliders switched to balls (cheaper against walls). 29 tests, e2e still green.
 - Also done after the gate: terrain heightfield refresh after carving (debris rests in craters).
