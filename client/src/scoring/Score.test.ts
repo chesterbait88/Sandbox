@@ -27,15 +27,33 @@ describe('Score', () => {
     expect(s.voxelsDestroyed).toBe(54 * PER);
   });
 
-  it('detonations raise the multiplier, capped, and it decays after the window', () => {
-    for (let i = 0; i < 12; i++) s.onDetonation();
+  it('detonations fill the combo meter, the multiplier caps, and it drains level by level', () => {
+    const perLevel = 1 / SCORING.comboHeatPerDetonation;
+    for (let i = 0; i < perLevel; i++) s.onDetonation();
+    expect(s.multiplier).toBe(1 + SCORING.comboStep);
+    for (let i = 0; i < 30; i++) s.onDetonation();
     expect(s.multiplier).toBe(SCORING.comboMax);
-    expect(s.bestChain).toBe(12);
+    expect(s.bestChain).toBe(perLevel + 30);
     s.onDestroyed(v(1, MAT.WOOD, 1));
     expect(s.score).toBe(2 * SCORING.comboMax);
-    s.update(SCORING.comboWindowS + 0.1);
+    // Nothing drains during the grace period; then one level per comboDrainS.
+    s.update(SCORING.comboGraceS - 0.1);
+    expect(s.multiplier).toBe(SCORING.comboMax);
+    s.update(0.2);
+    s.update(SCORING.comboDrainS);
+    expect(s.multiplier).toBe(SCORING.comboMax - SCORING.comboStep);
+    s.update(SCORING.comboDrainS * 20);
     expect(s.multiplier).toBe(1);
     expect(s.chain).toBe(0);
+  });
+
+  it('destroying value moves the meter sub-linearly and a heavy blast is about one level', () => {
+    s.onDestroyed(v(1, MAT.DRYWALL, 1)); // 1 point
+    expect(s.heat).toBeCloseTo(SCORING.comboHeatPerSqrtPoint, 5);
+    expect(s.multiplier).toBe(1);
+    s.reset([{ id: 1, name: 'Tower', totalValue: 100000, center: { x: 0, y: 0, z: 0 }, voxels: 1, bounds: { x0: 0, y0: 0, z0: 0, x1: 1, y1: 1, z1: 1 } }]);
+    s.onDestroyed(v(1, MAT.CONCRETE, 320)); // 1,600 points → sqrt 40 → one level
+    expect(s.multiplier).toBe(1 + SCORING.comboStep);
   });
 
   it('leveling a structure pays its listed value plus the bonus once', () => {

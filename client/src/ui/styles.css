@@ -126,32 +126,43 @@ button, input { font-family: inherit; }
 .score-track { height: 14px; background: #04060c; border: 1px solid var(--cyan-30); overflow: hidden; }
 .score-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--magenta)); transition: width .25s ease-out; box-shadow: 0 0 12px var(--cyan); }
 .score-next { font-family: var(--display); font-size: 22px; color: var(--cyan); letter-spacing: 1px; }
-.combo { position: absolute; left: -96px; top: 50%; transform: translateY(-50%) scale(0); width: 78px; height: 78px; display: grid; place-items: center; transition: transform .2s cubic-bezier(.2,1.6,.4,1); }
-.combo.on { transform: translateY(-50%) scale(1); }
-.combo.pop { animation: comboPop .3s ease-out; }
-@keyframes comboPop { 0% { transform: translateY(-50%) scale(1.5) } 100% { transform: translateY(-50%) scale(1) } }
-.combo-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--magenta) calc(var(--t, 1) * 360deg), #ffffff22 0); mask: radial-gradient(circle, transparent 58%, #000 60%); filter: drop-shadow(0 0 6px var(--magenta)); }
-.combo-val { font-family: var(--display); font-size: 26px; color: #fff; background: var(--panel); border-radius: 50%; width: 56px; height: 56px; display: grid; place-items: center; text-shadow: 0 0 10px var(--magenta); }
+/* combo meter: bottom edge, between the weapon hub and the readout */
+.hud-combo { position: absolute; left: max(136px, calc(50% - 450px)); bottom: 0; width: 200px; box-sizing: border-box; display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; background: var(--panel); border: 1px solid var(--cyan-60); border-bottom: none; border-radius: 12px 12px 0 0; box-shadow: var(--glow); padding: 8px 12px 10px; }
+.combo-mult { font-family: var(--display); font-size: 40px; line-height: 1; color: #fff; text-shadow: 0 0 12px var(--cyan-60); min-width: 58px; }
+.combo-mult.pop { animation: pop .25s ease-out; }
+.hud-combo.hot .combo-mult { color: var(--magenta); text-shadow: 0 0 16px var(--magenta); }
+.hud-combo.max { border-color: var(--magenta); box-shadow: 0 0 18px var(--magenta-60); }
+.combo-body { display: flex; flex-direction: column; gap: 3px; }
+.combo-label { font-family: var(--display); font-size: 13px; letter-spacing: 2px; color: var(--cyan); }
+.combo-track { height: 8px; background: #04060c; border: 1px solid var(--cyan-30); }
+.combo-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--magenta)); box-shadow: 0 0 8px var(--magenta); transition: width .12s linear; }
+.combo-boost { font-family: var(--display); font-size: 12px; letter-spacing: 1px; color: var(--good); min-height: 14px; text-shadow: 0 0 8px var(--good); }
+.combo-boost-track { height: 4px; background: #04060c; border: 1px solid transparent; }
+.hud-combo.boosted .combo-boost-track { border-color: rgba(157, 255, 58, .35); }
+.combo-boost-fill { height: 100%; width: 0; background: var(--good); box-shadow: 0 0 6px var(--good); transition: width .12s linear; }
+.hud-combo.reward { animation: barFlash .4s ease-out; }
 /* Timer: flush in the top-right corner. */
 .hud-timer { position: absolute; top: 0; right: 0; font-family: var(--display); font-size: 48px; line-height: 1; color: #fff; background: var(--panel); padding: 12px 22px 10px 26px; border: 1px solid var(--cyan-60); border-top: none; border-right: none; border-radius: 0 0 0 14px; box-shadow: var(--glow); text-shadow: 0 0 14px var(--cyan-60); min-width: 110px; text-align: center; }
 .hud-timer.urgent { color: var(--danger); animation: pulse .6s ease-in-out infinite alternate; border-color: var(--danger); text-shadow: 0 0 16px var(--danger); box-shadow: 0 0 18px rgba(255, 59, 92, .5); }
 @keyframes pulse { from { transform: scale(1) } to { transform: scale(1.06) } }
 /* Ammo: a quarter circle anchored in the bottom-right corner. */
-.hud-ammo { position: absolute; right: 0; bottom: 0; width: 250px; height: 210px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--cyan-60); border-right: none; border-bottom: none; border-radius: 250px 0 0 0; box-shadow: var(--glow); display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 0 22px 16px 0; gap: 2px; }
+.hud-ammo { position: absolute; right: 0; bottom: 0; width: 212px; height: 176px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--cyan-60); border-right: none; border-bottom: none; border-radius: 212px 0 0 0; box-shadow: var(--glow); display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; padding: 0 40px 14px 0; gap: 2px; }
+.ammo-head { display: flex; align-items: baseline; gap: 12px; }
+.ammo-g { font-family: var(--display); font-size: 15px; letter-spacing: 1px; color: var(--good); text-shadow: 0 0 8px var(--good); }
+/* C4 charges: a column of red pips up the plate's right edge, ARMED above them */
+.ammo-c4 { position: absolute; right: 10px; bottom: 14px; display: flex; flex-direction: column-reverse; align-items: center; gap: 3px; opacity: 0; }
+.ammo-c4.on { opacity: 1; }
 .hud-ammo.empty { border-color: var(--danger); box-shadow: 0 0 18px rgba(255, 59, 92, .5); }
 .hud-ammo.empty .ammo-mag { color: var(--danger); text-shadow: 0 0 14px var(--danger); }
 .ammo-weapon { font-family: var(--display); letter-spacing: 2px; color: var(--cyan); font-size: 17px; text-shadow: 0 0 8px var(--cyan-30); }
 .ammo-main { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; }
-.ammo-mag { font-family: var(--display); font-size: 64px; line-height: 1; color: #fff; text-shadow: 0 0 16px var(--cyan-60); }
+.ammo-mag { font-family: var(--display); font-size: 56px; line-height: 1; color: #fff; text-shadow: 0 0 16px var(--cyan-60); }
 .ammo-reserve { font-family: var(--display); font-size: 24px; color: var(--text-2); }
-.ammo-reload-track { height: 5px; width: 150px; background: #04060c; margin-top: 6px; border: 1px solid var(--cyan-30); }
+.ammo-reload-track { height: 5px; width: 130px; background: #04060c; margin-top: 6px; border: 1px solid var(--cyan-30); }
 .ammo-reload { height: 100%; width: 0; background: var(--cyan); transition: width .1s linear; box-shadow: 0 0 8px var(--cyan); }
 .hud-ammo.reloading .ammo-mag { color: var(--cyan); }
-.ammo-pips { display: flex; gap: 10px; justify-content: flex-end; align-items: center; min-height: 14px; }
-.pip-group { display: flex; gap: 3px; }
-.pip { display: inline-block; width: 9px; height: 12px; background: var(--good); box-shadow: 0 0 6px var(--good); }
-.pip.c { background: var(--danger); width: 12px; height: 9px; box-shadow: 0 0 6px var(--danger); }
-.charges { font-family: var(--display); color: var(--danger); letter-spacing: 1px; font-size: 14px; animation: pulse .5s infinite alternate; text-shadow: 0 0 8px var(--danger); }
+.pip.c { display: block; width: 14px; height: 8px; background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+.charges { font-family: var(--display); color: var(--danger); letter-spacing: 1px; font-size: 12px; animation: pulse .5s infinite alternate; text-shadow: 0 0 8px var(--danger); writing-mode: vertical-rl; transform: rotate(180deg); margin-bottom: 4px; }
 /* Weapon selector: hub flush in the bottom-left corner; Q fans a ring at screen centre. */
 .hud-radial { position: absolute; left: 0; bottom: 0; width: 124px; height: 96px; }
 .radial-backdrop { position: absolute; inset: 0; background: rgba(4, 5, 12, .55); opacity: 0; transition: opacity .15s; }

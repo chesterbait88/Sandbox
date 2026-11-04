@@ -28,6 +28,10 @@ export class StructureReadout {
       pop(this.stamp, 'stamp');
       this.hideAt = this.now + SCORING.readoutSeconds * 1000;
     });
+    events.on('leveledReward', (r) => {
+      const mags = r.magazines === 1 ? '+1 MAG' : `+${r.magazines} MAGS`;
+      this.stamp.textContent = `${this.stamp.textContent} · ${mags} · POWER +${Math.round(r.boost * 100)}%`;
+    });
   }
 
   update(now: number): void {

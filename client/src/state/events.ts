@@ -18,9 +18,12 @@ export interface GameEvents {
   weaponSwitch: { weapon: string; slot: number };
   ammoChanged: { weapon: string; mag: number; reserve: number; reloading: number; grenades: number; c4: number; charges: number };
   structureDamaged: { id: number; name: string; percent: number; value: number; totalValue: number; destroyedValue: number };
-  structureLeveled: { id: number; name: string; bonus: number; totalValue: number };
-  scoreChanged: { score: number; delta: number; multiplier: number; comboRemaining: number };
-  combo: { multiplier: number; chain: number };
+  structureLeveled: { id: number; name: string; bonus: number; totalValue: number; prop: boolean };
+  /** Ammo and power granted for leveling a structure. */
+  leveledReward: { weapon: string; magazines: number; boost: number; boostS: number };
+  scoreChanged: { score: number; delta: number; multiplier: number };
+  /** Combo meter changed: multiplier level and the fraction toward the next one. */
+  combo: { multiplier: number; chain: number; heat: number };
   milestone: { index: number; callout: string; reward: string; score: number; quiet: boolean };
   roundEnd: { score: number };
   tick: { remaining: number };

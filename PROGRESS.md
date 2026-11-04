@@ -1,5 +1,12 @@
 # Progress
 
+## Combo meter, leveled rewards, ammo plate (done; user review)
+- Done: the combo badge that sat behind the corner timer is gone; a combo plate on the bottom edge (between the weapon hub and the readout) shows the multiplier, chain count, a meter that fills with destruction (√ of value) and chain detonations and steps the multiplier when full, draining a level per 4 s after a 1.5 s pause; leveling a real structure refills a magazine of the weapon in hand and adds +25 % weapon power for 12 s (stacking to +100 %), shown on the same plate with its own timer and on the LEVELED stamp; the ammo plate is smaller with the grenade count as a number and the C4 charges as a pip column up its right edge. 33 tests; gallery regenerated in full (87 images, new `hud-combo-meter` shot).
+- Next: hands-on tuning of the meter rates (`SCORING.comboHeatPerSqrtPoint`, `comboHeatPerDetonation`, `comboDrainS`) and the boost size; they are first guesses from headless runs.
+- Blockers: none.
+- FPS / timing: unchanged from the overhaul entry.
+- Open decisions: see DECISIONS.md.
+
 ## Visual overhaul (done; user review of the gallery)
 - Done: voxel 0.5 → 0.25 m in a 96 × 40 × 96 m arena (720 chunks); every metre↔voxel factor from `VOXEL_SIZE` (the recipe context's hardcoded ×2 was a bug); siting constants in metres; all 14 recipes re-authored in metres with 0.25 m detail plus nine prop types (cars, trees, lamp posts, cactus, boulders, signs, dumpsters, hydrants, benches) placed after the structures; road centre/edge lines, kerbs and lane dashes, rock/dark sand/dry grass/flower beds; outline/bevel/hatch scaled per surface class (terrain faint, structures full, weapon in hand solid); eight weapon models with hands on a 1.25 cm canvas; neon UI (cyan/magenta/acid on near-black, no grey text, straight buttons) with every HUD element on a plate anchored to an edge or corner, structure readout and callouts along the bottom, controls on the loadout screen instead of an in-round hint; dusk skies per theme. Material values are per half-metre block so arena totals stay in range (desert ≈ 41k, downtown ≈ 66k, park ≈ 15k).
 - Next: a hands-on pass in a real browser (GPU fps with 720 chunks, the dusk lighting on a real display, weapon pose feel). Candidate: non-cubic mesh regions in the mesher so the 66-deep weapon models mesh faster at boot.
@@ -8,7 +15,7 @@
 - Open decisions: see DECISIONS.md ("Visual overhaul" onward). The working brief (`OVERHAUL.md`) was folded into DECISIONS.md and this entry and removed. Gallery review after the first regeneration fixed three things: downtown was lit too dark to tell glass from concrete (brighter blue hour), the combo badge overlapped the corner timer (moved to the bar's left), and the C4 gallery step stood inside the new office block's lobby (it now walks up to the first wall it sees).
 
 ## Visual review gallery
-- `pnpm gallery` writes 86 JPEGs plus `INDEX.md` to `screenshots/gallery/` (committed): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure and two props per theme from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
+- `pnpm gallery` writes 87 JPEGs plus `INDEX.md` to `screenshots/gallery/` (committed): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure and two props per theme from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
 
 ## Final state (end of run)
 
@@ -19,7 +26,7 @@
 - Eight weapons through one damage path; chain reactions; Rapier debris that bounces off walls and settles into craters; structural collapse of unsupported clusters; shake, flash, sparks, synthesized sound and menu music.
 - Scoring with combos, leveled bonuses and dripped milestones; HUD; settings persisted.
 - Server: SQLite under `DATA_DIR`, HMAC single-use sessions, time window, score caps, profanity filter, rate limit, cache; forged, early, oversized and replayed scores rejected; scores survive restarts.
-- `pnpm install && pnpm build && pnpm start` from a clean checkout (verified), `pnpm test` (32 tests), `pnpm screenshots`, `pnpm gallery`, `pnpm diagrams`, `node scripts/dev/e2e.mjs`.
+- `pnpm install && pnpm build && pnpm start` from a clean checkout (verified), `pnpm test` (33 tests), `pnpm screenshots`, `pnpm gallery`, `pnpm diagrams`, `node scripts/dev/e2e.mjs`.
 
 **Does not work / not verified here:**
 - Anything needing a real GPU, pointer lock or speakers was not exercised by a human: mouse look, aiming feel, audio levels, real frame rate. The controller, weapons and audio code paths were driven headlessly.

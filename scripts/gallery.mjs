@@ -137,8 +137,12 @@ await run(`
   g.player.position.set((b.x0 + b.x1 + 1) * V / 2 - 6, b.y0 * V, b.z0 * V - 14); g.player.yaw = Math.PI - 0.35; g.player.pitch = 0.05; g.player.updateCamera();
   g.destruction.applyDamage({ x: b.x0 * V + 1.5, y: b.y0 * V + 0.5, z: b.z0 * V + 1.5 }, 3, 60, 'gallery');`);
 await wait(420);
-await shot('action-chain-reaction', 'Propane cage outside the convenience store going up: chained detonations in flight.', 'Flash/particle look, combo badge on the score bar, two-tone propane bottles.');
-await wait(1600);
+await shot('action-chain-reaction', 'Propane cage outside the convenience store going up: chained detonations in flight.', 'Flash/particle look, two-tone propane bottles, the combo meter filling bottom-left.');
+await wait(900);
+await run(`const g = window.__vw; for (let i = 0; i < 5; i++) g.score.onDetonation(); g.weapons.grantBoost(0.25, 12, 1); g.events.emit('leveledReward', { weapon: 'pistol', magazines: 1, boost: 0.25, boostS: 12 });`);
+await wait(500);
+await shot('hud-combo-meter', 'The combo plate between the weapon hub and the readout: multiplier, chain count, the meter toward the next level, and a POWER boost with its timer.', 'Multiplier legibility, meter fill, boost line and bar, spacing against the hub and readout.');
+await wait(700);
 await run(`window.__vw.score.score = 990; window.__vw.score.onDestroyed([{x:0,y:0,z:0,mat:15,owner:1},{x:1,y:0,z:0,mat:15,owner:1}]);`);
 await wait(450);
 await shot('hud-milestone-callout', 'A milestone callout slamming in with its reward.', 'Banner weight, flash intensity, whether it obscures too much.');

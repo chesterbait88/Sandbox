@@ -19,6 +19,7 @@ import { StructureReadout } from './hud/StructureReadout';
 import { Crosshair } from './hud/Crosshair';
 import { Callouts } from './hud/Callouts';
 import { Countdown } from './hud/Countdown';
+import { ComboMeter } from './hud/ComboMeter';
 
 /** The DOM overlay: one screen at a time plus the HUD during play. Subscribes to Flow and events. */
 export class UI {
@@ -32,6 +33,7 @@ export class UI {
   readonly crosshair: Crosshair;
   readonly callouts = new Callouts();
   readonly countdown = new Countdown();
+  readonly combo = new ComboMeter();
   readonly loadout: LoadoutScreen;
   private overlay: Screen | null = null;
   private current: Screen | null = null;
@@ -54,7 +56,7 @@ export class UI {
     this.radial = new Radial(game.weapons, flow);
     this.crosshair = new Crosshair(game.weapons);
     for (const s of Object.values(this.screens)) root.append(s.el);
-    this.hud.append(this.radial.backdrop, this.scoreBar.el, this.timer.el, this.radial.el, this.ammo.el, this.readout.el, this.crosshair.el, this.callouts.el, this.countdown.el);
+    this.hud.append(this.radial.backdrop, this.scoreBar.el, this.timer.el, this.radial.el, this.combo.el, this.ammo.el, this.readout.el, this.crosshair.el, this.callouts.el, this.countdown.el);
     this.hud.style.display = 'none';
     root.append(this.hud);
     flow.onStateChange((s) => this.onState(s));
@@ -85,7 +87,10 @@ export class UI {
     this.hud.style.display = inRound ? '' : 'none';
     this.hud.classList.toggle('dim', s === 'paused');
     this.countdown.el.style.display = s === 'countdown' ? '' : 'none';
-    if (s === 'countdown') this.scoreBar.reset();
+    if (s === 'countdown') {
+      this.scoreBar.reset();
+      this.combo.reset();
+    }
   }
 
   showOverlay(s: Screen | null): void {
@@ -100,7 +105,7 @@ export class UI {
     if (flow.state === 'playing') {
       this.radial.update(game.input);
       this.crosshair.update();
-      this.scoreBar.update(dt * game.timeScale);
+      this.combo.update(game.score, game.weapons);
       this.readout.update(now);
     }
   }

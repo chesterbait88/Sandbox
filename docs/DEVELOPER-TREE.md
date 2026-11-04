@@ -198,7 +198,10 @@ sequenceDiagram
     E-->>G: milestone → Weapons.grant
     D-->>E: detonation
     E-->>G: detonation
-    G->>S: onDetonation → multiplier +0.5, window 2 s
+    G->>S: onDetonation → heat +0.5 (chain)
+    S->>S: gainHeat: level = floor(heat) → multiplier, combo event
+    E-->>G: structureLeveled (not a prop) → Weapons.grantMagazines, grantBoost
+    G-->>E: leveledReward
 ```
 
 ## Sequence: a blast triggers a collapse
@@ -369,7 +372,7 @@ classDiagram
         bodyCount
     }
     class Score {
-        number score, multiplier, comboRemaining
+        number score, multiplier, heat
         number chain, bestChain
         number voxelsDestroyed, structuresLeveled
         number arenaTotal, nextMilestone
@@ -379,6 +382,7 @@ classDiagram
         onDetonation()
         update(dt)
         structure(id)
+        heatFraction
     }
     class Destroyed {
         number x,y,z
@@ -485,11 +489,11 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `client/src/ui/UI.ts` **[main]**
   - `UI(root, game, flow)` — builds every screen and HUD widget, maps `Flow` states to screens, shows the HUD in a round
   - `showOverlay(screen)` — settings / credits on top of a screen
-  - `update(dt, now, game, flow)` — countdown number, radial, crosshair, combo ring, readout timeout
+  - `update(dt, now, game, flow)` — countdown number, radial, crosshair, combo meter (reads Score.heatFraction and Weapons.boost), readout timeout
 - `client/src/ui/Screen.ts` — `show()/hide()` with enter/leave animation, `onShow()/onHide()`
 - `client/src/ui/dom.ts` — `h`, `button`, `fmt`, `tickNumber`, `pop`, `settings.load/save` (localStorage)
 - `client/src/ui/screens/` **[main]** — `Menu` (best strip), `WorldPicker` (cards, seed, dice, top scores), `Loadout` (eight scissored model viewports via `renderViews`), `Pause`, `Settings` (sensitivity/volume/FOV sliders), `Credits`, `Results` (count-ups), `Initials` (three columns, typing + arrows), `Leaderboard` (tabs, top 10, highlight)
-- `client/src/ui/hud/` **[main]** — `ScoreBar` (score tick, milestone fill, combo badge + ring), `Timer`, `Ammo` (mag/reserve/reload/pips/armed), `Radial` (Q hold, mouse-direction select), `StructureReadout` (3 s, LEVELED stamp), `Crosshair` (spread, hit marker), `Callouts` (milestone slam + flash), `Countdown`
+- `client/src/ui/hud/` **[main]** — `ScoreBar` (score tick, milestone fill), `ComboMeter` (multiplier, chain, meter, boost timer), `Timer`, `Ammo` (mag/reserve/reload, grenade count, C4 pip column, armed), `Radial` (Q hold, mouse-direction select), `StructureReadout` (3 s, LEVELED stamp), `Crosshair` (spread, hit marker), `Callouts` (milestone slam + flash), `Countdown`
 - `client/src/game/Game.ts` **[main]**
   - `Game(canvas, uiRoot)` — constructs every system, subscribes to events
   - `flow`, `uiUpdate`, `afterRender` — hooks the state machine and UI into the frame
@@ -566,8 +570,10 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `client/src/scoring/Score.ts` **[main]**
   - `reset(structures)` — registry and arena total
   - `onDestroyed(list)` — value × multiplier for owned voxels, structureDamaged / structureLeveled events
-  - `onDetonation()` — combo step and window
-  - `update(dt)` — combo decay
+  - `onDetonation()` — chain count and half a level of heat
+  - `gainHeat(amount)`, `syncMultiplier()` — heat → level → multiplier (SCORING.combo*), `combo` event on change
+  - `heatFraction` — fraction toward the next level for the HUD
+  - `update(dt)` — milestone drip; after `comboGraceS` the heat drains one level per `comboDrainS`
   - `add(delta)` — scoreChanged; milestones queue and `releaseMilestone()` drips one per 0.6 s
   - `structure(id)`, `arenaPercent`
 - `client/src/player/Input.ts` **[main]**
@@ -695,7 +701,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Buildings stand on flattened pads | `stampPad`, `padHeight` |
 | Each structure's voxels carry its id and its value is known | `StructureCtx.set` |
 | Structure voxels pay value × multiplier, terrain pays nothing | `Score.onDestroyed` |
-| Combo multiplier from chain detonations, 2 s window | `Score.onDetonation`, `Score.update` |
+| Combo meter: fills with destruction (√ value) and chains, steps the multiplier, drains when idle | `Score.gainHeat`, `Score.syncMultiplier`, `Score.update` |
+| Leveling a real structure refills a magazine and boosts weapon power for a while | `Game.subscribe` (structureLeveled) → `Weapons.grantMagazines`, `Weapons.grantBoost`, `Weapons.power` |
 | Leveled bonus, once per structure | `Score.onDestroyed` |
 | Milestones every 1,000 with ammo rewards and a stinger | `Score.add`, `Game.subscribe` → `Weapons.grant` |
 | +5 s milestone reward | `Flow` → `Round.addTime` |
@@ -704,9 +711,10 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Loadout briefing with spinning models | `LoadoutScreen.renderViews` |
 | 3-2-1 countdown with the camera dropping in | `Flow.update` (countdown), `Countdown` |
 | 3:00 clock, red under 30 s | `Round`, `Timer` |
-| Score bar, combo badge and ring | `ScoreBar` |
+| Score bar | `ScoreBar` |
+| Combo plate with meter and boost timer | `ComboMeter` |
 | Radial picker with slow motion | `Radial`, `Flow.setRadial` |
-| Ammo panel, pips, ARMED | `Ammo` |
+| Ammo plate, grenade count, C4 pip column, ARMED | `Ammo` |
 | Structure readout and LEVELED stamp | `StructureReadout` |
 | Crosshair spread and hit markers | `Crosshair` |
 | Milestone callouts and screen flash | `Callouts` |
@@ -737,6 +745,8 @@ Everything in SPEC.md "Project structure" and "Build plan" now has code. Known g
 
 
 ## Changelog
+
+- 2026-11-04: Score heat meter replaces the detonation window; `ComboMeter` HUD widget; `Weapons.grantMagazines/grantBoost/power`; `leveledReward` event; `LEVELED_REWARD` config
 
 - 2026-11-04: Visual overhaul — 0.25 m voxels and a 96 m arena; metre-based siting constants; recipes in metres with props; terrain markings and variety; per-class shader style; collapse support on a worker (`support.ts`); box cluster bodies, 0.5 m heightfield, debris insert spread, `markDirtyBox`, shader pre-compile in warm-up; material values per half-metre block
 

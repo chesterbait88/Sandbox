@@ -1,21 +1,24 @@
 import { h } from '../dom';
 import { events } from '../../state/events';
 
-/** Bottom-right: magazine, reserve, reload bar, grenade and C4 pips. */
+/** Bottom-right quarter-circle plate: weapon, magazine, reserve, reload bar, grenade count, C4 pips stacked on the right edge. */
 export class Ammo {
   readonly el = h('div', 'hud-ammo');
   private mag = h('div', 'ammo-mag', '12');
   private reserve = h('div', 'ammo-reserve', '72');
   private reload = h('div', 'ammo-reload');
-  private pips = h('div', 'ammo-pips');
-  private weaponName = h('div', 'ammo-weapon', 'PISTOL');
+  private c4 = h('div', 'ammo-c4');
+  private grenades = h('span', 'ammo-g', '');
+  private weaponName = h('span', 'ammo-weapon', 'PISTOL');
 
   constructor() {
     const main = h('div', 'ammo-main');
     main.append(this.mag, this.reserve);
     const bar = h('div', 'ammo-reload-track');
     bar.append(this.reload);
-    this.el.append(this.pips, this.weaponName, main, bar);
+    const head = h('div', 'ammo-head');
+    head.append(this.grenades, this.weaponName);
+    this.el.append(head, main, bar, this.c4);
     events.on('ammoChanged', (a) => {
       const inf = !Number.isFinite(a.mag);
       this.mag.textContent = inf ? '∞' : String(a.mag);
@@ -23,7 +26,9 @@ export class Ammo {
       this.el.classList.toggle('empty', !inf && a.mag <= 0 && (a.reserve <= 0 || a.weapon === 'grenade' || a.weapon === 'c4'));
       this.reload.style.width = `${a.reloading * 100}%`;
       this.el.classList.toggle('reloading', a.reloading > 0);
-      this.pips.innerHTML = `<span class="pip-group">${'<i class="pip g"></i>'.repeat(Math.min(12, a.grenades))}</span><span class="pip-group">${'<i class="pip c"></i>'.repeat(Math.min(12, a.c4))}</span>${a.charges ? `<span class="charges">${a.charges} ARMED</span>` : ''}`;
+      this.grenades.textContent = a.weapon === 'grenade' ? '' : `G ${a.grenades}`;
+      this.c4.innerHTML = `${a.charges ? `<span class="charges">${a.charges} ARMED</span>` : ''}${'<i class="pip c"></i>'.repeat(Math.min(8, a.c4))}`;
+      this.c4.classList.toggle('on', a.c4 > 0 || a.charges > 0);
     });
     events.on('weaponSwitch', (w) => (this.weaponName.textContent = w.weapon.toUpperCase()));
   }

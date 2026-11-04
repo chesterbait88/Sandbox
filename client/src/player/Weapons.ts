@@ -79,6 +79,9 @@ export class Weapons {
   loadout: Record<string, number> | null = null;
   /** Sticky grenades stick on first contact instead of bouncing. */
   sticky = false;
+  /** Timed weapon power boost (fraction added to every weapon's power) from leveling structures. */
+  boost = 0;
+  private boostUntil = 0;
   private swingTimer = 0;
   private pendingSwing: WeaponState | null = null;
   private tmpV = new THREE.Vector3();
@@ -99,6 +102,8 @@ export class Weapons {
   }
 
   reset(): void {
+    this.boost = 0;
+    this.boostUntil = 0;
     for (const s of this.slots) {
       const w = s.def;
       const total = this.loadout && Number.isFinite(w.totalAmmo) ? (this.loadout[w.id] ?? 0) : w.totalAmmo;
@@ -119,6 +124,34 @@ export class Weapons {
 
   get active(): WeaponState {
     return this.slots[this.current];
+  }
+
+  /** Seconds of boost left. */
+  get boostRemaining(): number {
+    return this.boost > 0 ? Math.max(0, (this.boostUntil - this.now) / 1000) : 0;
+  }
+
+  /** Add a timed power boost; the timer restarts and the amount stacks up to max. */
+  grantBoost(amount: number, seconds: number, max: number): void {
+    this.boost = Math.min(max, this.boost + amount);
+    this.boostUntil = this.now + seconds * 1000;
+  }
+
+  /** Add magazines to the current weapon (one charge or grenade for thrown and placed weapons). */
+  grantMagazines(n: number): string {
+    const s = this.active;
+    const w = s.def;
+    if (Number.isFinite(w.totalAmmo)) {
+      if (w.kind === 'thrown' || w.kind === 'placed') s.mag += n;
+      else s.reserve += n * w.magSize;
+      this.emitAmmo();
+    }
+    return w.id;
+  }
+
+  /** Weapon power with the current boost. */
+  private power(w: Weapon): number {
+    return w.power * (1 + this.boost);
   }
 
   select(i: number): void {
@@ -159,6 +192,7 @@ export class Weapons {
   }
 
   update(dt: number, now: number, input: Input): void {
+    if (this.boost > 0 && now >= this.boostUntil) this.boost = 0;
     this.now = now;
     for (const s of this.slots) {
       if (s.cooldown > 0) s.cooldown -= dt;
@@ -258,7 +292,7 @@ export class Weapons {
       for (let i = 0; i < pellets; i++) {
         const dir = this.spreadDir(spread);
         const hit = this.world.raycast(eye, dir, w.range);
-        if (hit) this.destruction.applyDamage(this.centreFor(hit), w.radius, w.power, w.id);
+        if (hit) this.destruction.applyDamage(this.centreFor(hit), w.radius, this.power(w), w.id);
       }
     } else if (w.kind === 'projectile') {
       this.spawnRocket();
@@ -287,7 +321,7 @@ export class Weapons {
       events.emit('hit', { center: this.player.eye(), radius: 0, power: 0, destroyed: [], source: w.id, glass: 0 });
       return;
     }
-    this.destruction.applyDamage(this.centreFor(hit), w.radius, w.power, w.id);
+    this.destruction.applyDamage(this.centreFor(hit), w.radius, this.power(w), w.id);
   }
 
   /** Damage centre for a ray hit: the hit voxel's centre (or the surface point if snapping is off). */
@@ -346,7 +380,7 @@ export class Weapons {
     this.charges = [];
     for (const c of list) {
       this.group.remove(c.mesh);
-      this.destruction.applyDamage(c.pos, w.radius, w.power, 'c4');
+      this.destruction.applyDamage(c.pos, w.radius, this.power(w), 'c4');
     }
     events.emit('placedCharge', { count: 0 });
     this.emitAmmo();
@@ -394,7 +428,7 @@ export class Weapons {
       if (g.fuse <= 0 || g.pos.y < -5) {
         this.group.remove(g.mesh);
         this.grenades.splice(i, 1);
-        if (g.pos.y >= -5) this.destruction.applyDamage({ x: g.pos.x, y: g.pos.y, z: g.pos.z }, w.radius, w.power, 'grenade');
+        if (g.pos.y >= -5) this.destruction.applyDamage({ x: g.pos.x, y: g.pos.y, z: g.pos.z }, w.radius, this.power(w), 'grenade');
       }
     }
   }
@@ -410,7 +444,7 @@ export class Weapons {
         const b = WEAPON_TUNING.rocketBiteM;
         this.group.remove(rk.mesh);
         this.rockets.splice(i, 1);
-        this.destruction.applyDamage({ x: hit.point.x + rk.dir.x * b, y: hit.point.y + rk.dir.y * b, z: hit.point.z + rk.dir.z * b }, w.radius, w.power, 'rocket');
+        this.destruction.applyDamage({ x: hit.point.x + rk.dir.x * b, y: hit.point.y + rk.dir.y * b, z: hit.point.z + rk.dir.z * b }, w.radius, this.power(w), 'rocket');
         continue;
       }
       rk.pos.addScaledVector(rk.dir, len);
@@ -419,7 +453,7 @@ export class Weapons {
       if (rk.travelled > WEAPON_TUNING.rocketMaxRange || rk.pos.y < -5 || rk.pos.y > 200) {
         this.group.remove(rk.mesh);
         this.rockets.splice(i, 1);
-        if (rk.pos.y >= -5 && rk.pos.y <= 200) this.destruction.applyDamage({ x: rk.pos.x, y: rk.pos.y, z: rk.pos.z }, w.radius, w.power, 'rocket');
+        if (rk.pos.y >= -5 && rk.pos.y <= 200) this.destruction.applyDamage({ x: rk.pos.x, y: rk.pos.y, z: rk.pos.z }, w.radius, this.power(w), 'rocket');
       }
     }
   }

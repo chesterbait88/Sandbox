@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLLAPSE, MAT, MATERIALS, PHYSICS, PLAYER, RENDER, VOXEL_SIZE, WEAPONS, WEAPON_TUNING, WORLD_SIZE_M, WORLD_VOXELS, type ThemeId } from '@vw/config';
+import { COLLAPSE, LEVELED_REWARD, MAT, MATERIALS, PHYSICS, PLAYER, RENDER, VOXEL_SIZE, WEAPONS, WEAPON_TUNING, WORLD_SIZE_M, WORLD_VOXELS, type ThemeId } from '@vw/config';
 import { GameRenderer } from '../render/Renderer';
 import { ChunkRenderer } from '../world/ChunkRenderer';
 import { World } from '../world/World';
@@ -165,6 +165,12 @@ export class Game {
       else if (m.reward === 'rocket') this.weapons.grant('rocket', WEAPON_TUNING.rewardRocket);
       else if (m.reward === 'c4') this.weapons.grant('c4', WEAPON_TUNING.rewardC4);
       // 'time' is applied by the round clock (phase 4).
+    });
+    events.on('structureLeveled', (s) => {
+      if (s.prop || this.warming) return;
+      const weapon = this.weapons.grantMagazines(LEVELED_REWARD.magazines);
+      this.weapons.grantBoost(LEVELED_REWARD.boost, LEVELED_REWARD.boostS, LEVELED_REWARD.boostMax);
+      events.emit('leveledReward', { weapon, magazines: LEVELED_REWARD.magazines, boost: LEVELED_REWARD.boost, boostS: LEVELED_REWARD.boostS });
     });
     events.on('collapse', (c) => {
       const eye = this.player.eye();

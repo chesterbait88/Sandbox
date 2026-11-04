@@ -45,10 +45,13 @@ flowchart TD
     S[Spawn on the pad, 3:00 on the clock] --> L[Look, move, pick a weapon]
     L --> F[Fire / swing / throw / place]
     F --> D[Blocks fly, score ticks up]
-    D --> Q{Chain reaction?}
-    Q -->|yes| X[Combo ×1.5, ×2 … ×5<br/>ring drains over 2 s]
-    Q -->|no| L
+    D --> Q[Combo meter fills<br/>more for chains]
+    Q -->|meter full| X[Multiplier steps up<br/>×1.5 … ×5, drains when idle]
+    Q --> L
     X --> L
+    D --> Lv{Structure leveled?}
+    Lv -->|yes| Rw[+1 magazine<br/>POWER +25 % for 12 s]
+    Rw --> L
     D --> Mi{Crossed 1,000?}
     Mi -->|yes| Ca[Callout slams in<br/>+1 grenade / rocket / C4 / +5 s]
     Ca --> L
@@ -61,10 +64,11 @@ flowchart TD
 
 Every element sits on its own dark plate with a cyan rule, anchored to a screen edge; nothing floats and nothing is dimmed.
 
-- **Top edge, centred**: score bar flush with the top: running score, the next milestone and a fill racing toward it; it flashes on every hit. A combo badge with a draining ring appears during chains.
+- **Top edge, centred**: score bar flush with the top: running score, the next milestone and a fill racing toward it; it flashes on every hit.
 - **Top-right corner**: the clock, flush in the corner, red and pulsing under 30 s.
 - **Bottom-left corner**: the current weapon's slot number and name on a corner plate. Holding Q dims the view and fans all eight weapons out on a wide ring, mouse direction highlights one, release selects it; the game runs at 30 % speed while it is open.
-- **Bottom-right corner**: a quarter-circle plate with the weapon name, magazine and reserve, a reload bar, grenade and C4 pips, "N ARMED" while C4 charges are placed. Red when empty.
+- **Bottom, left of centre**: the combo plate: the multiplier (×1 … ×5), the chain count, a meter that fills toward the next multiplier step and drains after a pause, and the POWER boost line with its own timer bar after you level a structure.
+- **Bottom-right corner**: a smaller quarter-circle plate with the weapon name, the grenade count as a number, magazine and reserve, a reload bar, and the C4 charges as red pips stacked up the right edge with "N ARMED" while charges are placed. Red when empty.
 - **Bottom edge, centred**: structure readout plate for 3 s after a hit ("GAS STATION 78 % · 1,240 pts") with the LEVELED stamp above it.
 - **Bottom band**: milestone callouts ("WRECKING +1 GRENADE") slide up along the bottom of the screen, out of the view; the screen flash is faint.
 - **Centre**: crosshair that spreads for the shotgun and tightens while aiming; a hit marker ticks on every destroyed block.
@@ -109,21 +113,23 @@ Debris also bounces off walls now, not only the ground, and settles into craters
 
 ## Scoring as it works now
 
-Only structure voxels pay. Terrain is free to dig. Each destroyed structure voxel pays its material's value (glass 1 … steel 8) times the current combo multiplier.
+Only structure voxels pay. Terrain is free to dig. Each destroyed structure voxel pays its material's value (per half-metre block: glass 1 … steel 8) times the current combo multiplier.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Calm: round starts, ×1
-    Calm --> Combo: a tank, bottle or transformer detonates
-    Combo --> Combo: another detonation<br/>+0.5 (max ×5), window back to 2 s
-    Combo --> Calm: 2 s with no detonation
-    note right of Combo
-        Everything destroyed inside the window,
-        by any cause, pays × the multiplier
+    [*] --> Idle: round starts, ×1, meter empty
+    Idle --> Filling: anything destroyed adds to the meter<br/>a chain detonation adds half a level
+    Filling --> Filling: meter full → multiplier +0.5 (max ×5)
+    Filling --> Draining: 1.5 s without destruction
+    Draining --> Filling: destroy something
+    Draining --> Idle: one level drains per 4 s, down to ×1
+    note right of Filling
+        Everything destroyed, by any cause,
+        pays × the multiplier shown on the combo plate
     end note
 ```
 
-Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock. Several milestones earned at once are announced one after another; after three, the rest just drop their rewards quietly.
+The meter grows with the square root of the value destroyed, so a pistol shot nudges it and a C4 blast on a building is about one whole level; chain detonations add a fixed half level each. Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value, refills one magazine of the weapon in hand (one charge for grenades and C4) and adds +25 % weapon power for 12 s, stacking up to +100 %. Props (cars, trees, lamp posts) pay but never grant the leveled rewards. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock. Several milestones earned at once are announced one after another; after three, the rest just drop their rewards quietly.
 
 ## A dramatic moment: grenade through a brick wall
 
@@ -216,6 +222,8 @@ Mechanics from SPEC.md that do not exist for the player at this commit:
 
 
 ## Changelog
+
+- 2026-11-04: Combo meter plate (multiplier, chain, meter, drain timer), leveled rewards (magazine + timed power boost), smaller ammo plate with the C4 charges stacked on its edge
 
 - 2026-11-04: Visual overhaul — 25 cm voxels in a 96 m arena, detailed structures and props, road markings and terrain variety, weapons with hands, neon UI with every HUD element on an anchored plate, controls on the loadout screen, dusk skies
 
