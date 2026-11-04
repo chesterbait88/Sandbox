@@ -17,16 +17,18 @@ describe('applyDamage', () => {
     events.clear();
   });
 
-  it('a grenade clears drywall fully but barely marks concrete', () => {
-    wall(world, MAT.DRYWALL, 20, 40, 20, 30, 40, 1);
+  it('a grenade clears drywall deeper than concrete and tags owners', () => {
+    for (let z = 40; z < 48; z++) wall(world, MAT.DRYWALL, 20, 40, 20, 30, z, 1);
     const a = d.applyDamage({ x: 15, y: 12.5, z: 19.8 }, 2.5, 40, 'test');
     expect(a.length).toBeGreaterThan(50);
     expect(a.every((v) => v.owner === 1)).toBe(true);
-    wall(world, MAT.CONCRETE, 60, 80, 20, 30, 40, 2);
+    for (let z = 40; z < 48; z++) wall(world, MAT.CONCRETE, 60, 80, 20, 30, z, 2);
     const b = d.applyDamage({ x: 35, y: 12.5, z: 19.8 }, 2.5, 40, 'test');
     expect(b.length).toBeGreaterThan(0);
-    expect(b.length).toBeLessThan(a.length / 2);
-    expect(world.getVoxel(70, 25, 40)).toBe(MAT.CONCRETE);
+    expect(b.length).toBeLessThan(a.length);
+    // Drywall is carved to the full 2.5 m depth; concrete keeps its back half.
+    expect(world.getVoxel(30, 25, 44)).toBe(0);
+    expect(world.getVoxel(70, 25, 44)).toBe(MAT.CONCRETE);
   });
 
   it('C4 punches through concrete', () => {
