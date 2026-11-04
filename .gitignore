@@ -6,3 +6,5 @@ data/
 screenshots/*.png
 screenshots/.data*
 .vite
+.ccr-ca.crt
+Dockerfile.sandbox

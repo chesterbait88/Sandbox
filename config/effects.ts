@@ -58,7 +58,9 @@ export const PHYSICS = {
   step: 1 / 60,
   maxSubSteps: 2,
   /** Chunk trimesh colliders (walls) for debris: built only for chunks that hold structure voxels, this many per frame. */
-  chunkCollidersPerFrame: 1
+  chunkCollidersPerFrame: 1,
+  /** The terrain heightfield is rebuilt this often (s) when craters changed it, so debris rests in holes. */
+  heightfieldRefreshS: 1
 } as const;
 
 /** Structural collapse: unsupported clusters of a structure fall as one rigid body. */

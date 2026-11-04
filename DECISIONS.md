@@ -15,7 +15,7 @@
 - **Debris has CCD off and physics takes at most 2 sub-steps per frame**; CCD on 24 fresh bodies cost 15 ms in one step. Pieces move under 0.3 m per step so tunnelling through the heightfield is not an issue.
 - **A warm-up pass runs at world load** (scratch carve, Rapier steps, AudioContext creation) because the first calls were 10–50× slower than warm ones.
 - **One InstancedMesh for all debris** with per-instance colour instead of one per material; same look, one draw call.
-- **The terrain heightfield is static**: carving terrain does not update it, so debris may rest on the pre-crater surface. Accepted for the MVP.
+- **The terrain heightfield is rebuilt at most once a second** from the columns that craters changed (replacing the earlier MVP decision to leave it static); a rebuild costs a few ms and only runs while terrain is being dug.
 - **Volatile dedupe radius is 2 m** (see above).
 - **Structure recipes draw in local voxel coordinates with y = 0 on the pad**, and the placer flattens a pad to the median terrain height under the footprint (+2 m margin). Pads keep the terrain material on top so they still score nothing.
 - **Placement is jittered-grid first, random second**: 36 m cells shuffled per seed, each structure tries its cell with jitter, then random spots, up to 40 attempts, 10 m gap, 10 m edge margin. The desert road and the spawn pad are reserved rectangles.

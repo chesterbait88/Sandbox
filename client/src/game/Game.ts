@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLLAPSE, MAT, MATERIALS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, type ThemeId } from '@vw/config';
+import { COLLAPSE, MAT, MATERIALS, PHYSICS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, WORLD_VOXELS, type ThemeId } from '@vw/config';
 import { GameRenderer } from '../render/Renderer';
 import { ChunkRenderer } from '../world/ChunkRenderer';
 import { World } from '../world/World';
@@ -56,6 +56,10 @@ export class Game {
   worstFrame = 0;
   /** Current FOV multiplier (aim zoom). */
   private zoom = 1;
+  /** Terrain columns (x + SX*z) whose surface changed since the heightfield was last rebuilt. */
+  private dirtyColumns = new Set<number>();
+  private height: Int16Array | null = null;
+  private heightfieldT = 0;
 
   constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement) {
     this.gfx = new GameRenderer(canvas);
@@ -118,6 +122,7 @@ export class Game {
       if (h.destroyed.length) {
         this.score.onDestroyed(h.destroyed);
         this.collapse?.notify(h.destroyed);
+        for (const v of h.destroyed) if (v.owner === 0) this.dirtyColumns.add(v.x + WORLD_VOXELS.x * v.z);
       }
       if (h.destroyed.length === 0 && h.power === 0) {
         this.audio.swing(false);
@@ -161,6 +166,25 @@ export class Game {
     events.on('weaponSwitch', () => this.audio.click(1.2));
   }
 
+  /** Rebuild the terrain heightfield from carved columns, at most every PHYSICS.heightfieldRefreshS. */
+  private refreshHeightfield(dt: number): void {
+    if (!this.height || this.dirtyColumns.size === 0) return;
+    this.heightfieldT += dt;
+    if (this.heightfieldT < PHYSICS.heightfieldRefreshS) return;
+    this.heightfieldT = 0;
+    const SX = WORLD_VOXELS.x;
+    for (const col of this.dirtyColumns) {
+      const x = col % SX;
+      const z = (col / SX) | 0;
+      // Scan down from the old surface (terrain only gets lower).
+      let y = this.height[col];
+      while (y > 0 && this.world.mat[voxelIndex(x, y, z)] === 0) y--;
+      this.height[col] = y;
+    }
+    this.dirtyColumns.clear();
+    this.physics.setTerrain(this.height);
+  }
+
   private chunkHasStructure(cx: number, cy: number, cz: number): boolean {
     const owner = this.world.owner;
     const x0 = cx * CHUNK_SIZE;
@@ -187,6 +211,8 @@ export class Game {
     this.weapons.setWorld(world);
     this.score.reset(world.structures);
     this.physics.setTerrain(height);
+    this.height = height;
+    this.dirtyColumns.clear();
     this.physics.clearChunkColliders();
     this.debris?.clear();
     this.collapse?.setWorld(world);
@@ -233,6 +259,7 @@ export class Game {
       this.score.update(dt);
       this.collapse.update(now);
       this.physics.buildQueuedColliders();
+      this.refreshHeightfield(rawDt);
       this.physics.update(dt);
       this.debris.update(now);
       this.effects.update(dt, now);

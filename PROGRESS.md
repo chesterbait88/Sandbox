@@ -2,7 +2,8 @@
 
 ## Phase 7 — stretch (done)
 - Done: chunk trimesh colliders for chunks holding structure voxels (built one per frame, ~5 ms each) so debris bounces off walls; structural collapse (flood-fill support per touched structure, unsupported clusters cut, scored and dropped as convex-hull rigid bodies meshed on a worker, one cluster per frame); point-buy loadout (128-point budget, +/− per slot, sticky grenade upgrade) with its own leaderboard board (`mode` column, POINT-BUY tab, mode signed into the session token); share links (`?arena=theme-SEED`) from results and leaderboard, leaderboard rows replay their arena; milestone drip so bursts of milestones announce one at a time; debris colliders switched to balls (cheaper against walls). 29 tests, e2e still green.
-- Next: nothing left in SPEC.md. Candidates if continued: glass colliders, heightfield updates after terrain carving, a hands-on tuning pass.
+- Also done after the gate: terrain heightfield refresh after carving (debris rests in craters).
+- Next: nothing left in SPEC.md. Candidates if continued: glass colliders, a hands-on tuning pass.
 - Blockers: none.
 - FPS / timing (headless CPU): office-block collapse check 29 ms once (flood fill + cutting 20k voxels + hull) with the mesh on a worker; 144 debris against walls: physics 1.3 ms/frame avg (balls), insertion frame 19 ms; wall collider build ~5 ms each, one per frame.
 - Open decisions: see DECISIONS.md.

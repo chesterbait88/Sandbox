@@ -493,6 +493,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `init()` — Rapier init, debris pool
   - `loadWorld(theme, seed, terrainOnly)` — generate, install, heightfield, spawn, warm-up, wait for meshes
   - `warmup()` — carves a scratch world and steps physics so first-call JIT/first-contact costs are paid before play
+  - `refreshHeightfield(dt)` — once a second, rescans carved terrain columns and rebuilds the heightfield so debris rests in craters
   - `whenMeshed() → Promise` — resolves when no chunk is dirty
   - `start()`, `frame()` — the loop: look, move, weapons, chains, physics, debris, effects, view model, shake, chunks, render
   - `onFrame(fn)` — extra per-frame hooks
@@ -590,7 +591,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `setWorld(world)`, `pendingCount`
 - `client/src/physics/PhysicsWorld.ts` **[main → WASM]**
   - `PhysicsWorld.init()`, `create(gravity)` — Rapier init
-  - `setTerrain(height)` — static heightfield from the surface (not updated when terrain is carved)
+  - `setTerrain(height)` — heightfield from the surface; rebuilt by `Game.refreshHeightfield` after craters
   - `queueChunkCollider(index, mesh)`, `buildQueuedColliders()` — trimesh colliders for chunks that hold structure voxels, one build per frame
   - `createClusterBody(center, points, half)`, `removeBody(body)` — collapse bodies
   - `update(dt)` — fixed 60 Hz stepping, at most 2 sub-steps per frame
@@ -700,6 +701,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Top-100 check, initials, submission, leaderboard tabs | `Flow.endRound` → `api.qualifies`, `InitialsScreen`, `Flow.submitInitials`, `LeaderboardScreen` |
 | Scores survive a restart; forged or replayed scores are rejected | `Db`, `TokenSigner`, `validate.ts`, `createApi` |
 | Debris bounces off walls | `ChunkRenderer.onMeshed` → `PhysicsWorld.queueChunkCollider` |
+| Debris settles into craters | `Game.refreshHeightfield` → `PhysicsWorld.setTerrain` |
 | Cut-off parts of a building fall as one piece and score | `Collapse.check`, `Collapse.release` |
 | Point-buy loadout and sticky grenades | `Flow.adjust`, `Flow.toggleSticky`, `LoadoutScreen`, `Weapons.loadout`, `Weapons.sticky` |
 | Separate point-buy leaderboard | token `mode`, `Db.where`, `LeaderboardScreen` POINT-BUY tab |
@@ -717,11 +719,11 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 Everything in SPEC.md "Project structure" and "Build plan" now has code. Known gaps rather than missing modules:
 
 - Transparent (glass) faces have no collider, so debris passes through windows.
-- The terrain heightfield is never updated after carving.
 
 
 ## Changelog
 
+- 2026-11-04: heightfield refresh after terrain carving
 - 2026-11-04: Phase 7 — Collapse, chunk trimesh colliders, meshArbitrary, point-buy loadout, sticky grenades, share links, mode column
 - 2026-11-04: Phase 6 — music loop, aim zoom, hints, notice, wall-clock UI timers
 - 2026-11-04: Phase 5 — db.ts, token.ts, validate.ts, real api.ts; server subgraph and lifecycle sequence updated

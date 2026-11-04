@@ -102,7 +102,7 @@ flowchart TD
     R --> D[It drops as one rigid piece,<br/>lands on walls and ground, fades out]
 ```
 
-Debris also bounces off walls now, not only the ground.
+Debris also bounces off walls now, not only the ground, and settles into craters you dig.
 
 ## Scoring as it works now
 
@@ -213,6 +213,7 @@ Mechanics from SPEC.md that do not exist for the player at this commit:
 
 ## Changelog
 
+- 2026-11-04: debris settles into craters
 - 2026-11-04: Phase 7 — structural collapse, debris bouncing off walls, point-buy loadouts with their own board, sticky grenades, share links
 - 2026-11-04: Phase 6 — menu music, aim zoom, control hints, desktop-only notice, pointer-lock robustness
 - 2026-11-04: Phase 5 — scores persist on the server with signed sessions and validation
