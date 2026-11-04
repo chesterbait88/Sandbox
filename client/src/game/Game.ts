@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAT, MATERIALS, PLAYER, RENDER, WEAPONS, type ThemeId } from '@vw/config';
+import { MAT, MATERIALS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, type ThemeId } from '@vw/config';
 import { GameRenderer } from '../render/Renderer';
 import { ChunkRenderer } from '../world/ChunkRenderer';
 import { World } from '../world/World';
@@ -15,6 +15,7 @@ import { ViewModel } from '../player/ViewModel';
 import { Synth } from '../audio/Synth';
 import { events } from '../state/events';
 import { DebugOverlay } from '../debug/DebugOverlay';
+import { Score } from '../scoring/Score';
 
 /** Owns every runtime system and the frame loop. The state machine (phase 4) drives it. */
 export class Game {
@@ -31,6 +32,7 @@ export class Game {
   readonly view: ViewModel;
   readonly weapons: Weapons;
   readonly audio = new Synth();
+  readonly score = new Score();
   theme: ThemeId = 'desert';
   seed = 'ALPHA';
   /** Global time scale (slow-mo). */
@@ -94,6 +96,7 @@ export class Game {
         this.debris?.spawn(h.destroyed, h.center, h.power);
         return;
       }
+      if (h.destroyed.length) this.score.onDestroyed(h.destroyed);
       if (h.destroyed.length === 0 && h.power === 0) {
         this.audio.swing(false);
         return;
@@ -114,6 +117,14 @@ export class Game {
     events.on('detonation', (d) => {
       const eye = this.player.eye();
       this.effects.blast(d.center, d.power * 1.3, eye);
+      this.score.onDetonation();
+    });
+    events.on('milestone', (m) => {
+      this.audio.stinger();
+      if (m.reward === 'grenade') this.weapons.grant('grenade', WEAPON_TUNING.rewardGrenade);
+      else if (m.reward === 'rocket') this.weapons.grant('rocket', WEAPON_TUNING.rewardRocket);
+      else if (m.reward === 'c4') this.weapons.grant('c4', WEAPON_TUNING.rewardC4);
+      // 'time' is applied by the round clock (phase 4).
     });
     events.on('weaponFire', (f) => {
       if (f.weapon === 'pistol' || f.weapon === 'shotgun' || f.weapon === 'rifle' || f.weapon === 'rocket') this.audio.shot(f.weapon);
@@ -133,6 +144,7 @@ export class Game {
     this.player.setWorld(world);
     this.destruction.setWorld(world);
     this.weapons.setWorld(world);
+    this.score.reset(world.structures);
     this.physics.setTerrain(height);
     this.debris?.clear();
     this.player.spawn(world.spawn, world.spawnYaw);
@@ -171,6 +183,7 @@ export class Game {
       this.player.update(dt, this.input);
       this.weapons.update(dt, now, this.input);
       this.destruction.update(now);
+      this.score.update(dt);
       this.physics.update(dt);
       this.debris.update(now);
       this.effects.update(dt, now);
@@ -188,7 +201,8 @@ export class Game {
     this.debug.set(
       `pos ${this.player.position.x.toFixed(1)} ${this.player.position.y.toFixed(1)} ${this.player.position.z.toFixed(1)} · ${this.weapons.active.def.name}\n` +
         `chunks meshed ${this.chunks.stats.meshed} · dirty ${this.chunks.stats.dirty} · inflight ${this.chunks.stats.inFlight} · avg ${this.chunks.stats.avgMs.toFixed(2)} ms\n` +
-        `debris ${this.debris?.count ?? 0} · pending chains ${this.destruction.pendingCount} · worst frame ${this.worstFrame.toFixed(1)} ms`
+        `debris ${this.debris?.count ?? 0} · pending chains ${this.destruction.pendingCount} · worst frame ${this.worstFrame.toFixed(1)} ms\n` +
+        `score ${this.score.score} ×${this.score.multiplier} · structures ${this.world.structures.length} · arena ${this.score.arenaTotal} pts · ${(this.score.arenaPercent * 100).toFixed(1)}% wrecked`
     );
     this.input.endFrame();
   }

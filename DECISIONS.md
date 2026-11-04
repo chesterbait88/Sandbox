@@ -17,3 +17,8 @@
 - **One InstancedMesh for all debris** with per-instance colour instead of one per material; same look, one draw call.
 - **The terrain heightfield is static**: carving terrain does not update it, so debris may rest on the pre-crater surface. Accepted for the MVP.
 - **Volatile dedupe radius is 2 m** (see above).
+- **Structure recipes draw in local voxel coordinates with y = 0 on the pad**, and the placer flattens a pad to the median terrain height under the footprint (+2 m margin). Pads keep the terrain material on top so they still score nothing.
+- **Placement is jittered-grid first, random second**: 36 m cells shuffled per seed, each structure tries its cell with jitter, then random spots, up to 40 attempts, 10 m gap, 10 m edge margin. The desert road and the spawn pad are reserved rectangles.
+- **Counts above the pool size repeat recipes** (e.g. two gas stations) after reshuffling the pool, since the spec asks for 6–10 structures from pools of 4–5.
+- **Water tower holds water and the fountain has water**: material 7 (terrain-valued, transparent) so it reads as water but pays nothing.
+- **The milestone `time` reward is emitted but applied by nothing until the round clock exists (phase 4).**

@@ -20,7 +20,7 @@ const seed = params.get('seed') ?? 'ALPHA';
 
 const hint = document.createElement('div');
 hint.className = 'phase0';
-hint.textContent = `Voxel Wreck — phase 2 · ${THEMES[theme].name} · seed ${seed} · click to play · 1-8 weapons · G grenade · F3 debug`;
+hint.textContent = `Voxel Wreck — phase 3 · ${THEMES[theme].name} · seed ${seed} · click to play · 1-8 weapons · G grenade · F3 debug`;
 ui.appendChild(hint);
 
 canvas.addEventListener('click', () => game.input.requestLock());

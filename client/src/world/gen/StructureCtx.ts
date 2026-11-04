@@ -1,0 +1,109 @@
+import { MATERIALS, WORLD_VOXELS } from '@vw/config';
+
+const SX = WORLD_VOXELS.x;
+const SY = WORLD_VOXELS.y;
+const SZ = WORLD_VOXELS.z;
+const valueOf = new Float32Array(256);
+for (const m of Object.values(MATERIALS)) valueOf[m.id] = m.value;
+
+/**
+ * Recipe drawing context. Coordinates are local voxels: x across, z deep, y up from the pad
+ * surface (y = 0 is the first voxel above ground). Every placed voxel is tagged with the
+ * structure id and its material value is summed into totalValue.
+ */
+export class StructureCtx {
+  totalValue = 0;
+  voxels = 0;
+  minX = Infinity;
+  minY = Infinity;
+  minZ = Infinity;
+  maxX = -Infinity;
+  maxY = -Infinity;
+  maxZ = -Infinity;
+
+  constructor(
+    private mat: Uint8Array,
+    private owner: Uint16Array,
+    readonly id: number,
+    readonly origin: { x: number; y: number; z: number }
+  ) {}
+
+  /** Helper: metres to voxels. */
+  m(v: number): number {
+    return Math.round(v * 2);
+  }
+
+  set(x: number, y: number, z: number, m: number): void {
+    const wx = this.origin.x + x;
+    const wy = this.origin.y + y;
+    const wz = this.origin.z + z;
+    if (wx < 0 || wy < 0 || wz < 0 || wx >= SX || wy >= SY || wz >= SZ) return;
+    const i = wx + SX * (wz + SZ * wy);
+    const prev = this.mat[i];
+    if (prev !== 0 && this.owner[i] === this.id) {
+      this.totalValue -= valueOf[prev];
+      this.voxels--;
+    }
+    this.mat[i] = m;
+    if (m === 0) {
+      this.owner[i] = 0;
+      return;
+    }
+    this.owner[i] = this.id;
+    this.totalValue += valueOf[m];
+    this.voxels++;
+    if (wx < this.minX) this.minX = wx;
+    if (wy < this.minY) this.minY = wy;
+    if (wz < this.minZ) this.minZ = wz;
+    if (wx > this.maxX) this.maxX = wx;
+    if (wy > this.maxY) this.maxY = wy;
+    if (wz > this.maxZ) this.maxZ = wz;
+  }
+
+  /** Inclusive box. */
+  box(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, m: number): void {
+    for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++)
+      for (let z = Math.min(z0, z1); z <= Math.max(z0, z1); z++)
+        for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) this.set(x, y, z, m);
+  }
+
+  /** Walls, floor and roof of thickness t; interior left as is. */
+  hollowBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, m: number, t = 1, floor = true, roof = true): void {
+    for (let y = y0; y <= y1; y++)
+      for (let z = z0; z <= z1; z++)
+        for (let x = x0; x <= x1; x++) {
+          const wall = x < x0 + t || x > x1 - t || z < z0 + t || z > z1 - t;
+          const fl = floor && y < y0 + t;
+          const rf = roof && y > y1 - t;
+          if (wall || fl || rf) this.set(x, y, z, m);
+        }
+  }
+
+  /** Vertical cylinder of radius r (voxels) centred at (cx, cz), from y0 to y1 inclusive. */
+  cylinder(cx: number, cz: number, r: number, y0: number, y1: number, m: number, hollow = 0): void {
+    const r2 = r * r;
+    const inner = Math.max(0, r - hollow) ** 2;
+    for (let y = y0; y <= y1; y++)
+      for (let z = Math.floor(cz - r); z <= Math.ceil(cz + r); z++)
+        for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+          const d = (x + 0.5 - cx) ** 2 + (z + 0.5 - cz) ** 2;
+          if (d <= r2 && (hollow === 0 || d >= inner)) this.set(x, y, z, m);
+        }
+  }
+
+  /** Fill every voxel in the box where fn returns a non-zero material. */
+  fill(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, fn: (x: number, y: number, z: number) => number): void {
+    for (let y = y0; y <= y1; y++)
+      for (let z = z0; z <= z1; z++)
+        for (let x = x0; x <= x1; x++) {
+          const m = fn(x, y, z);
+          if (m) this.set(x, y, z, m);
+        }
+  }
+
+  /** Centre of everything placed, in metres. */
+  center(): { x: number; y: number; z: number } {
+    if (this.voxels === 0) return { x: this.origin.x * 0.5, y: this.origin.y * 0.5, z: this.origin.z * 0.5 };
+    return { x: ((this.minX + this.maxX + 1) / 2) * 0.5, y: ((this.minY + this.maxY + 1) / 2) * 0.5, z: ((this.minZ + this.maxZ + 1) / 2) * 0.5 };
+  }
+}

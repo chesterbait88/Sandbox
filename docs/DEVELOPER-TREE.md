@@ -22,11 +22,12 @@ flowchart TB
         EF[destruction/effects]
         PH[physics/PhysicsWorld]
         AU[audio/Synth]
+        SC[scoring/Score]
         EV[state/events · Emitter]
     end
     subgraph workers[Web Workers]
         MW[mesher.worker ×2]
-        GW[gen.worker]
+        GW[gen.worker → terrain, placer, recipes]
     end
     subgraph wasm[WASM]
         RP[Rapier]
@@ -48,14 +49,15 @@ flowchart TB
     DM -- carve, markDirty --> W
     DM -. hit, detonation .-> EV
     WP -. weaponFire, ammoChanged .-> EV
-    EV -. subscribed in Game .-> DE & EF & AU
+    EV -. subscribed in Game .-> DE & EF & AU & SC
+    SC -. scoreChanged, structureDamaged, milestone .-> EV
     DE --> PH --> RP
     SV --> AP
     CFG --- main
     CFG --- workers
 ```
 
-The browser loads the client from the Node server; the client makes no API calls yet. `Game` is the only subscriber to the event emitter: it routes `hit`/`detonation` to debris, effects and audio, and `weaponFire`/`weaponSwitch` to audio.
+The browser loads the client from the Node server; the client makes no API calls yet. `Game` is the only subscriber to the event emitter: it routes `hit`/`detonation` to debris, effects, audio and `Score`, `weaponFire`/`weaponSwitch` to audio, and `milestone` to ammo grants. `Score` emits its own events, which nothing displays yet.
 
 ## Sequence: a world loads and becomes walkable
 
@@ -69,8 +71,8 @@ sequenceDiagram
     participant P as Controller
     M->>G: generateWorld(theme, seed)
     G->>G: generateTerrain → heightmap + strata
-    G->>G: placeStructures (spawn pad only)
-    G-->>M: mat, owner, height, spawn (transferred)
+    G->>G: placeStructures → pads, recipes, owner tags
+    G-->>M: mat, owner, height, structures, spawn (transferred)
     M->>W: new World(mat, owner)
     M->>C: setWorld(world)
     M->>P: spawn(pos, yaw)
@@ -102,6 +104,49 @@ sequenceDiagram
     P->>P: updateCamera
     M->>R: render()
     M->>I: endFrame()
+```
+
+## Sequence: placing one structure (gen.worker)
+
+```mermaid
+sequenceDiagram
+    participant P as placer
+    participant R as Recipe
+    participant T as terrain arrays
+    participant C as StructureCtx
+    P->>P: reserve spawn pad (and the desert road)
+    P->>R: footprint(rng)
+    loop up to 40 attempts: jittered grid cells, then random
+        P->>P: rectangle inside the margin, 10 m from everything taken?
+    end
+    P->>T: stampPad: flatten to the median height, refill strata, update heightmap
+    P->>C: new StructureCtx(mat, owner, id, origin)
+    P->>R: build(ctx, rng, footprint)
+    R->>C: box / hollowBox / cylinder / fill
+    C->>T: mat = material, owner = id, totalValue += value
+    P->>P: StructureInfo {id, name, totalValue, center}
+```
+
+## Sequence: a destroyed voxel becomes points
+
+```mermaid
+sequenceDiagram
+    participant D as Destruction
+    participant E as events
+    participant G as Game
+    participant S as Score
+    D-->>E: hit {destroyed}
+    E-->>G: hit
+    G->>S: onDestroyed(list)
+    S->>S: per voxel with owner: value × multiplier, structure destroyedValue
+    S-->>E: structureDamaged (per touched structure)
+    S-->>E: structureLeveled (+50 % bonus, once)
+    S-->>E: scoreChanged
+    S-->>E: milestone (each 1,000)
+    E-->>G: milestone → Weapons.grant
+    D-->>E: detonation
+    E-->>G: detonation
+    G->>S: onDetonation → multiplier +0.5, window 2 s
 ```
 
 ## Sequence: one shot, from click to debris
@@ -209,6 +254,19 @@ classDiagram
         string name
         number totalValue
         Vec3 center
+        number voxels
+    }
+    class Score {
+        number score, multiplier, comboRemaining
+        number chain, bestChain
+        number voxelsDestroyed, structuresLeveled
+        number arenaTotal, nextMilestone
+        boolean active
+        reset(structures)
+        onDestroyed(list)
+        onDetonation()
+        update(dt)
+        structure(id)
     }
     class Destroyed {
         number x,y,z
@@ -219,6 +277,8 @@ classDiagram
     World --> RayHit
     World --> StructureInfo
     World --> Destroyed : applyDamage output
+    Score o-- StructureInfo : registry
+    Score ..> Destroyed : owner + mat
 ```
 
 ## Data types: mesher output and config tables
@@ -258,8 +318,25 @@ classDiagram
         number reliefM
         strata
         string[] pool
+        structureCount, minGapM
         sky,fog,sun colours
     }
+    class Recipe {
+        string id, name
+        footprint(rng) Footprint
+        build(ctx, rng, fp)
+    }
+    class StructureCtx {
+        number id, totalValue, voxels
+        origin
+        box(...)
+        hollowBox(...)
+        cylinder(...)
+        fill(...)
+        center()
+    }
+    Recipe ..> StructureCtx : draws through
+    ThemeDef ..> Recipe : pool names
     MeshResult *-- MeshBuffers
     Material <.. MeshBuffers : colour and pattern baked in
     ThemeDef <.. Material : strata are material ids
@@ -325,7 +402,27 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `generateTerrain(theme, rng, mat) → {height}` — simplex heightmap, strata fill
   - `desertRoad(x,z,h)`, `surfaceOverride(theme,x,z,noise)`, `fillColumn(...)` — theme overlays
 - `client/src/world/gen/placer.ts` **[worker]**
-  - `placeStructures(theme, rng, mat, owner, height, terrainOnly) → Placed` — **stub**: returns an empty structure list and a spawn pad at the −z edge
+  - `placeStructures(theme, rng, mat, owner, height, terrainOnly) → Placed` — reserves the spawn pad (and the desert road), picks 6–10 recipes from the pool, jittered-grid then random placement with a 10 m gap, stamps pads, builds, returns `StructureInfo[]` + spawn
+  - `stampPad(theme, mat, height, rect, h)` — flatten to h, refill strata, keep the heightmap in sync
+  - `padHeight(height, rect) → number` — median terrain height under a rectangle
+  - `reserved(theme) → Rect[]`, `overlaps(a, b, gap)`
+- `client/src/world/gen/StructureCtx.ts` **[worker]**
+  - `StructureCtx(mat, owner, id, origin)` — local voxel coordinates, y = 0 on the pad
+  - `set(x,y,z,m)` — writes material + owner, keeps `totalValue`, `voxels` and bounds
+  - `box(...)`, `hollowBox(..., thickness, floor, roof)`, `cylinder(cx, cz, r, y0, y1, m, hollow)`, `fill(..., fn)` — drawing helpers
+  - `center() → Vec3` — metres
+- `client/src/world/gen/recipes/` **[worker]** — `Recipe = { id, name, footprint(rng), build(ctx, rng, fp) }`
+  - `desert.ts`: `gasStation`, `diner`, `billboard`, `waterTower`, `propaneCage`
+  - `downtown.ts`: `convenienceStore`, `officeBlock`, `parkingStructure`, `busShelter`
+  - `park.ts`: `monument`, `fountain`, `gazebo`, `statue`, `shed`
+  - `index.ts`: `RECIPES` by id
+- `client/src/scoring/Score.ts` **[main]**
+  - `reset(structures)` — registry and arena total
+  - `onDestroyed(list)` — value × multiplier for owned voxels, structureDamaged / structureLeveled events
+  - `onDetonation()` — combo step and window
+  - `update(dt)` — combo decay
+  - `add(delta)` — scoreChanged + milestone events
+  - `structure(id)`, `arenaPercent`
 - `client/src/player/Input.ts` **[main]**
   - `Input(canvas)` — key set, mouse buttons, wheel, movement deltas, pointer lock
   - `requestLock()`, `releaseLock()`, `down(code)`, `wasPressed(code)`, `endFrame()`
@@ -415,17 +512,20 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Boom, gunshot, glass tink, swing whoosh, clicks | `Synth.*`, routed in `Game.subscribe` |
 | Gun in hand with recoil, bob, muzzle flash | `ViewModel.*` |
 | Test wall with tank behind it (`?test=wall`) | `Game.stampTestWall` |
+| Six to ten structures per arena, same seed same arena | `placeStructures`, `RECIPES` |
+| Buildings stand on flattened pads | `stampPad`, `padHeight` |
+| Each structure's voxels carry its id and its value is known | `StructureCtx.set` |
+| Structure voxels pay value × multiplier, terrain pays nothing | `Score.onDestroyed` |
+| Combo multiplier from chain detonations, 2 s window | `Score.onDetonation`, `Score.update` |
+| Leveled bonus, once per structure | `Score.onDestroyed` |
+| Milestones every 1,000 with ammo rewards and a stinger | `Score.add`, `Game.subscribe` → `Weapons.grant` |
 
 ## Planned, not built
 
 Modules in SPEC.md "Project structure" with no code at this commit:
 
-- `client/src/state/` — GameState machine, round clock, stats (only the events type exists)
-- `client/src/world/gen/StructureCtx.ts` — box/cylinder/hollowBox helpers + owner tagging
-- `client/src/world/gen/recipes/` — every structure recipe
-- `client/src/world/gen/placer.ts` — real jittered-grid placement (current file is a spawn-pad stub)
+- `client/src/state/` — GameState machine, round clock, stats (only the events type exists); the milestone `time` reward is received by nothing
 - `client/src/player/Weapons.ts` radial select (selection by keys/wheel exists; the radial picker does not)
-- `client/src/scoring/Score.ts` — multiplier, structure registry, milestones
 - `client/src/scoring/api.ts` — session/score/leaderboard fetches
 - `client/src/ui/screens/` — Menu, WorldPicker, Loadout, Pause, Results, Initials, Leaderboard
 - `client/src/ui/hud/` — ScoreBar, Timer, Radial, Ammo, StructureReadout, Crosshair, Callouts
@@ -434,5 +534,6 @@ Modules in SPEC.md "Project structure" with no code at this commit:
 
 ## Changelog
 
+- 2026-11-04: Phase 3 — StructureCtx, placer, 14 recipes, Score wired into Game; placement and scoring sequences
 - 2026-11-04: Phase 2 — Game loop, Weapons, ViewModel, Destruction wired, Debris on Rapier heightfield, Effects, Synth; sequences for a shot, a chain frame and a grenade
 - 2026-11-04: Initial snapshot at 580cf52

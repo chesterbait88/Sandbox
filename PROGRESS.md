@@ -1,5 +1,12 @@
 # Progress
 
+## Phase 3 — structures + scoring (done)
+- Done: StructureCtx with owner tagging and value sums; 14 recipes across the three themes with random dimensions; placer with reserved spawn pad/road, jittered grid, 10 m gaps, flattened pads that keep the heightmap in sync; Score (value × multiplier, 2 s combo window, +0.5 steps to ×5, 50 % leveled bonus, milestones every 1,000 with ammo rewards); Game wires hit/detonation → Score and milestone → ammo; weapon view models reshaped. 20 Vitest tests (placer determinism + 6–10 count, no floating, scoring math).
+- Next: phase 4 game flow + HUD (state machine, Menu with orbiting world, World picker, Loadout, HUD, milestone callouts, Pause, Results, Initials, Leaderboard against a local server).
+- Blockers: none.
+- FPS / timing: world gen with structures 80–140 ms in the worker; arena totals desert ≈ 58k, downtown ≈ 106k, park ≈ 15k points for seed 1234. In-game check: leveling a bus shelter (556) paid 834 = 556 × 1.5.
+- Open decisions: see DECISIONS.md.
+
 ## Phase 2 — destruction (done)
 - Done: `applyDamage` sphere carve with hardness falloff, glass shatter, volatile chain queue (150 ms, deduped per tank); all eight weapons fire through one path (melee, hitscan with pellets/spread, raymarched rocket, bouncing grenade with fuse, stuck C4 with group detonation); Rapier debris (InstancedMesh, 300 cap) on a terrain heightfield; shake/flash/particles; synthesized boom/shot/tink/swing; view models with recoil, bob, muzzle flash; `?test=wall` harness. 13 Vitest tests.
 - Next: phase 3 structures + scoring (StructureCtx, placer, recipes for all three themes, owner tagging, Score with combo + leveled bonus, structure readout event, proper weapon view models).

@@ -16,11 +16,11 @@ flowchart LR
     E --> E
 ```
 
-What the player sees: a sunlit voxel desert with rolling dunes and one asphalt road through the middle, a small caption at the top naming the theme and seed, and an optional stats readout (F3). Adding `test=wall` to the address stamps a brick wall with a fuel tank and a propane bottle behind it, a glass pane and a concrete slab, so there is something to wreck.
+What the player sees: a sunlit voxel arena with six to ten structures from the theme's pool standing on flattened pads, a small caption at the top naming the theme and seed, and an optional stats readout (F3) that also shows the running score, the multiplier and the arena's percent wrecked. Adding `test=wall` to the address stamps a test wall with a fuel tank behind it near the spawn.
 
 ## The in-round loop as it works now
 
-There is no clock and no score yet. The loop is movement plus wrecking.
+There is no clock yet, so a "round" never ends. Score is kept but only shown in the stats readout; there is no HUD.
 
 ```mermaid
 flowchart TD
@@ -60,6 +60,24 @@ flowchart TD
     E -->|no| S[Debris flies, screen shakes,<br/>flash, sparks, boom]
     D --> S
 ```
+
+## Scoring as it works now
+
+Only structure voxels pay. Terrain is free to dig. Each destroyed structure voxel pays its material's value (glass 1 … steel 8) times the current combo multiplier.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Calm: round starts, ×1
+    Calm --> Combo: a tank, bottle or transformer detonates
+    Combo --> Combo: another detonation<br/>+0.5 (max ×5), window back to 2 s
+    Combo --> Calm: 2 s with no detonation
+    note right of Combo
+        Everything destroyed inside the window,
+        by any cause, pays × the multiplier
+    end note
+```
+
+Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a stinger plays and a reward drops, cycling grenade → rocket → C4 → time. The ammo rewards are added to the loadout; the time reward has nothing to add to yet.
 
 ## A dramatic moment: grenade through a brick wall
 
@@ -111,44 +129,51 @@ Everyone carries the same eight slots. Ammo is for the whole round; nothing refi
 | 7 | Grenade | Bounces, 3 s fuse, 2.5 m sphere | Rooms and anything soft | 8 |
 | 8 | C4 | Stuck to a surface, 4 m sphere, all charges fire together | Concrete | 4 |
 
-## The arena today
+## The arenas and what stands in them
 
 ```mermaid
 mindmap
-  root((Arena))
+  root((Arena 128 m square))
     Desert Highway
-      Sand dunes
-      Asphalt road
-      Stone under the sand
-    Downtown terrain
-      Flat asphalt
-      Sidewalk grid
-    Memorial Park terrain
-      Grass hills
-      Gravel paths
-    Shared
-      128 m square, 64 m tall
-      Half-metre voxels
-      Same seed, same arena
+      Dunes, road, stone below
+      Gas Station: canopy, pumps on fuel tanks, store, neon sign, propane cage
+      Diner: brick base, glass band, neon trim, propane in the kitchen
+      Billboard: steel posts, wood face, neon letters
+      Water Tower: steel legs and tank
+      Propane Cage
+    Downtown
+      Flat asphalt, sidewalk grid
+      Convenience Store: glass front, drywall shelves, transformer, propane cage
+      Office Block: 3 to 5 floors, concrete frame, glass walls, steel core, alley transformer
+      Parking Structure: open concrete decks
+      Bus Shelter: glass and steel
+      Propane Cage
+    Memorial Park
+      Grass hills, gravel paths
+      Monument: marble pedestal and column, steel core
+      Fountain: marble ring, water
+      Gazebo: wood posts and roof
+      Statue: marble on concrete
+      Maintenance Shed: wood, fuel tank inside
 ```
 
-All three terrains generate from a seed. No structures stand on any of them yet, so there is nothing to score and nothing to wreck.
+Same theme and seed always build the same arena. Structures never float: each stands on a pad flattened into the terrain. Each theme totals roughly 15,000 (park) to 100,000 (downtown) points.
 
 ## Not yet playable
 
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
-- Structures: gas station, diner, billboard, water tower, propane cage, convenience store, office block, parking structure, bus shelter, monument, fountain, gazebo, statue, maintenance shed.
-- Scoring, combo multiplier, leveled bonus, milestones and rewards.
+- Seeing the score, multiplier, combo ring, structure readout ("GAS STATION 78 % · 1,240 pts"), "LEVELED" stamp or milestone callouts on screen; they exist as events only.
+- The +5 s milestone reward (no clock to add it to).
 - The 3-minute round clock and the round-end slow motion.
 - The radial weapon picker (Q / wheel fan-out) and its slow motion; aim-zoom (aiming only tightens spread today).
 - Hit markers, crosshair, any on-screen ammo or weapon readout (ammo is tracked but not shown).
 - Start menu, world picker, loadout briefing, countdown, pause, results, initials entry, leaderboard.
 - Settings (sensitivity, volume, FOV).
-- Anything volatile in a generated arena: tanks only exist in the `test=wall` harness until structures arrive.
 - The server: sessions, score submission, leaderboard storage.
 
 ## Changelog
 
+- 2026-11-04: Phase 3 — three arenas with fourteen structure types, scoring with combos, leveled bonus and milestones
 - 2026-11-04: Phase 2 — all eight weapons fire, carving, chain reactions, debris, effects and sound; test wall harness
 - 2026-11-04: Initial snapshot at 580cf52
