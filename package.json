@@ -11,6 +11,7 @@
     "screenshots": "node scripts/screenshots.mjs",
     "diagrams": "node scripts/check-diagrams.mjs",
     "gallery": "node scripts/gallery.mjs",
+    "timeline": "node scripts/timeline.mjs",
     "start": "node server/dist/index.js"
   },
   "devDependencies": {

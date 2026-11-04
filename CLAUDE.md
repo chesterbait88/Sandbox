@@ -19,7 +19,7 @@ You are building a first-person browser demolition game. The full design is in S
 - Keep the module interfaces listed in SPEC.md "Project structure" stable so pieces can be tested alone.
 
 ## Commands
-- `pnpm install` · `pnpm dev` (client on 5173 proxying /api to server on 8080) · `pnpm build` · `pnpm test` · `pnpm screenshots` · `pnpm gallery` (visual review set in `screenshots/gallery-updated/`, committed; `screenshots/gallery-before/` is the frozen pre-overhaul set for comparison) · `pnpm diagrams` · `pnpm start` (serve built client + API on 8080)
+- `pnpm install` · `pnpm dev` (client on 5173 proxying /api to server on 8080) · `pnpm build` · `pnpm test` · `pnpm screenshots` · `pnpm gallery` (visual review set in `screenshots/gallery-updated/`, committed) · `pnpm timeline` (`screenshots/TIMELINE.md` from the frozen snapshots in `screenshots/timeline/`; `pnpm timeline snapshot <slug> "<title>" "<notes>"` freezes the current set as a new milestone) · `pnpm diagrams` · `pnpm start` (serve built client + API on 8080)
 - Docker is deferred: containerize after the game runs locally (`Dockerfile` is provided but not part of any gate).
 
 ## Living diagrams (grow with the build, never written ahead of it)

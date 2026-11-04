@@ -11,6 +11,8 @@ export class StructureReadout {
   private stamp = h('div', 'readout-stamp', '');
   private hideAt = 0;
   private now = 0;
+  private stampBase = '';
+  private reward = '';
 
   constructor() {
     const track = h('div', 'readout-track');
@@ -23,14 +25,22 @@ export class StructureReadout {
       this.el.classList.add('on');
       this.hideAt = this.now + SCORING.readoutSeconds * 1000;
     });
+    // Game's structureLeveled handler (which emits leveledReward) subscribed before this widget, so the
+    // reward can arrive before or after the stamp text; compose from both whichever comes first.
     events.on('structureLeveled', (s) => {
-      this.stamp.textContent = `LEVELED +${fmt(s.bonus)}`;
+      this.stampBase = `LEVELED +${fmt(s.bonus)}`;
+      this.stamp.textContent = this.reward ? `${this.stampBase} · ${this.reward}` : this.stampBase;
+      this.reward = '';
       pop(this.stamp, 'stamp');
       this.hideAt = this.now + SCORING.readoutSeconds * 1000;
     });
     events.on('leveledReward', (r) => {
       const mags = r.magazines === 1 ? '+1 MAG' : `+${r.magazines} MAGS`;
-      this.stamp.textContent = `${this.stamp.textContent} · ${mags} · POWER +${Math.round(r.boost * 100)}%`;
+      this.reward = `${mags} · POWER +${Math.round(r.boost * 100)}%`;
+      if (this.stampBase) {
+        this.stamp.textContent = `${this.stampBase} · ${this.reward}`;
+        this.reward = '';
+      }
     });
   }
 

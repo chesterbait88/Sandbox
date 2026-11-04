@@ -1,0 +1,42 @@
+[
+  {
+    "n": 1,
+    "slug": "phase-7",
+    "dir": "01-phase-7",
+    "title": "Phase 7: first review set",
+    "notes": "The first committed gallery: 0.5 m voxels, arcade palette, orange UI, two-brick weapons, control hint in the round.",
+    "commit": "4636885",
+    "date": "2026-11-04",
+    "images": 74
+  },
+  {
+    "n": 2,
+    "slug": "pre-overhaul",
+    "dir": "02-pre-overhaul",
+    "title": "Pre-overhaul: propane cages as lattices",
+    "notes": "Same build with lattice propane cages so the bottles show; the set the overhaul review was made against.",
+    "commit": "a7516b7",
+    "date": "2026-11-04",
+    "images": 74
+  },
+  {
+    "n": 3,
+    "slug": "overhaul",
+    "dir": "03-overhaul",
+    "title": "Visual overhaul",
+    "notes": "0.25 m voxels in a 96 m arena, detailed structures and props, road markings, weapons with hands, neon UI with anchored HUD plates, controls on the loadout screen, dusk skies.",
+    "commit": "0d37536",
+    "date": "2026-11-04",
+    "images": 86
+  },
+  {
+    "n": 4,
+    "slug": "combo-meter",
+    "dir": "04-combo-meter",
+    "title": "Combo meter and leveled rewards",
+    "notes": "Combo plate with multiplier, chain, meter and power-boost timer; leveling refills a magazine and boosts power; smaller ammo plate with the C4 pip column; grenade count as a number.",
+    "commit": "17e4f35",
+    "date": "2026-11-04",
+    "images": 87
+  }
+]

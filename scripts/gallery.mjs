@@ -1,7 +1,7 @@
 // Visual review gallery: every user-facing screen and HUD state, action moments, every structure
 // from a 3/4 view and up close, theme overviews, terrain and material close-ups, each weapon in hand.
 // Usage: node scripts/gallery.mjs   → screenshots/gallery-updated/*.jpg + INDEX.md
-// (screenshots/gallery-before/ is the frozen pre-overhaul set, kept for before/after comparison.)
+// (scripts/timeline.mjs freezes a run as a milestone under screenshots/timeline/ and renders TIMELINE.md.)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
