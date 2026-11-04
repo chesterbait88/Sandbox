@@ -188,9 +188,9 @@ await mobile.close();
 
 // ---------------------------------------------------------------- arenas and structures
 const THEMES = {
-  desert: ['Gas Station', 'Diner', 'Billboard', 'Water Tower', 'Propane Cage'],
-  downtown: ['Convenience Store', 'Office Block', 'Parking Structure', 'Bus Shelter'],
-  park: ['Monument', 'Fountain', 'Gazebo', 'Statue', 'Maintenance Shed']
+  desert: ['Gas Station', 'Diner', 'Billboard', 'Water Tower', 'Propane Cage', 'Car', 'Cactus'],
+  downtown: ['Convenience Store', 'Office Block', 'Parking Structure', 'Bus Shelter', 'Lamp Post', 'Dumpster'],
+  park: ['Monument', 'Fountain', 'Gazebo', 'Statue', 'Maintenance Shed', 'Tree', 'Bench']
 };
 // Aerial: above the spawn edge looking across the arena; heights relative to the arena size.
 const AERIAL = { desert: [0.4, -0.14], downtown: [0.47, -0.16], park: [0.44, -0.16] };
@@ -214,20 +214,20 @@ for (const [theme, names] of Object.entries(THEMES)) {
 }
 // Terrain close-ups
 await load('theme=desert&seed=1234&screen=menu');
-await run(`window.__gal.free(); window.__gal.stand(20, 48, 34, 60, 2.2, 1.2);`);
+await run(`window.__gal.free(); window.__gal.stand(16, 40, 30, 48, 2.2, 1.2);`);
 await wait(700);
-await shot('terrain-desert-road', 'Desert: standing on a dune above the road shoulder, looking along the asphalt.', 'Sand jitter and outlines, road edge blend, dune stepping.');
-await run(`window.__gal.stand(28, 24, 40, 36, 1.6, 0.4);`);
+await shot('terrain-desert-road', 'Desert: standing on a dune above the road shoulder, looking along the asphalt.', 'Double yellow centre line, white edge lines, shoulder blend, dune stepping.');
+await run(`window.__gal.stand(22, 18, 34, 30, 1.6, 0.4);`);
 await wait(700);
-await shot('terrain-desert-dunes', 'Desert: dune terraces at eye height.', 'Half-metre voxel terracing: does it read as terrain or as stairs?');
+await shot('terrain-desert-dunes', 'Desert: dune terraces at eye height.', 'Quarter-metre terracing, rock on the steep faces, dark sand in the hollows.');
 await load('theme=downtown&seed=1234&screen=menu');
-await run(`window.__gal.free(); window.__gal.stand(30, 30, 44, 44, 1.6, 0.9);`);
+await run(`window.__gal.free(); window.__gal.stand(30, 30, 40, 40, 1.6, 0.9);`);
 await wait(700);
-await shot('terrain-downtown-street', 'Downtown: standing in a street at a block corner, sidewalk ring ahead.', 'Asphalt vs sidewalk contrast, grid readability, flatness.');
+await shot('terrain-downtown-street', 'Downtown: standing in a street at a block corner, sidewalk ring ahead.', 'Kerb strip, dashed lane line, asphalt vs sidewalk contrast.');
 await load('theme=park&seed=1234&screen=menu');
 await run(`window.__gal.free(); const g = window.__vw; const f = g.world.structures.find(s => s.name === 'Fountain'); window.__gal.cam(f.center.x - 10, f.center.y + 4, f.center.z - 12, f.center.x, f.center.y - 1, f.center.z);`);
 await wait(700);
-await shot('terrain-park-path', 'Park: gravel path, grass hill and the fountain.', 'Gravel checker pattern, grass colour, hill stepping, water.');
+await shot('terrain-park-path', 'Park: gravel path, grass hill and the fountain.', 'Gravel path, dry-grass tops, flower beds, rocks, water.');
 
 // Material swatches
 await load('theme=desert&seed=1234&screen=menu');

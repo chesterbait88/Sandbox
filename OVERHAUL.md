@@ -31,9 +31,9 @@ Written mid-session so the plan survives a cut-off. Branch: `claude/magical-alle
 11. Weapon view model: new canvas at 1 cm voxels, hands built into every model (the old hand blocks sat below the frame — that was the "cut off" look), distinct silhouettes; loadout showcase camera in `VIEW_MODEL.showcase`.
 12. UI: tokens → near-black ink, electric cyan primary, hot magenta secondary, acid green good, no orange; Anton stays for display. Straight buttons.
 
-## Open performance issue (0.25 m)
+## Performance (0.25 m, sandbox = SwiftShader on a slow CPU)
 
-Sandbox (SwiftShader, slow CPU) after the cut: C4 in an office block destroys ~4 100 voxels; carve 20–27 ms, collapse check 19 ms, worst frame 70–100 ms (was 7–10 ms at 0.5 m). Target: no main-thread frame over 16 ms. Plan: mark dirty chunks per blast not per voxel, run the collapse flood fill on a worker or time-slice it, cap destroyed-list work; re-measure with `scripts/dev/probe.mjs`.
+Before: C4 in an office block (~4 100 voxels) → carve 20–27 ms, collapse check 19–41 ms on the main thread, Rapier step 15–50 ms every frame while a floor fell, worst frame 70–100 ms, 1.5 s shader compile on the first blast. After the perf commit: Rapier step 1–2 ms (one 17–34 ms step when debris inserts), collapse check 46 ms on the worker + 10–20 ms main-thread copy, pure carve 1.6 ms (node), milestone callout 22 → 11 ms (UI fork removing the forced reflow). Remaining main-thread cost per blast ≈ 24 ms in the sandbox, mostly the hit handlers; real hardware is several times faster. Re-measure with `scripts/dev/probe.mjs` (`CLIENT_DIST=... PROBE=...`).
 
 ## Step order and status
 
@@ -41,9 +41,9 @@ Sandbox (SwiftShader, slow CPU) after the cut: C4 in an office block destroys ~4
 | --- | --- | --- |
 | 1 | Scale-factor fixes | committed |
 | 2 | Shader class split | committed |
-| 3 | Voxel 0.25 m + metre constants + props plumbing + terrain variety | in progress (this commit) |
-| 4 | Recipes re-authored in metres with detail; prop recipes (cactus, rock, car, roadSign, lampPost, dumpster, hydrant, tree, bench) | pending |
+| 3 | Voxel 0.25 m + metre constants + props plumbing + terrain variety | committed |
+| 4 | Recipes re-authored in metres with detail; prop recipes (cactus, rock, car, roadSign, lampPost, dumpster, hydrant, tree, bench) | committed |
 | 5 | Weapon models + hands | pending |
 | 6 | Theme colours (dusk/neon) + UI/HUD restyle per the list above | pending |
-| 7 | Blast-frame performance back under budget | pending |
+| 7 | Blast-frame performance: collapse on a worker, box cluster bodies, 0.5 m heightfield, debris spread, dirty box, shader pre-compile | committed; re-measure after the UI fork removes the callout reflow |
 | 8 | Gallery regenerate, docs/PLAYER-FLOW + DEVELOPER-TREE changelog, DECISIONS.md, PROGRESS.md, push | pending |

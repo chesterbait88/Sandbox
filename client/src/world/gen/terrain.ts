@@ -132,8 +132,9 @@ function surfaceOverride(theme: ThemeId, x: number, z: number, h: number, height
     if (Math.abs(n) < 0.02) return MAT.GRAVEL;
     // Dry grass on the tops, flower patches in the dips, a rock here and there.
     const d = detail(x * 0.04, z * 0.04);
-    if (d > 0.5) return MAT.DRY_GRASS;
-    if (d < -0.62) return MAT.FLOWERS;
+    if (d > 0.55) return MAT.DRY_GRASS;
+    // Flower beds: small, scattered (a second, finer noise gates the dips).
+    if (d < -0.6 && detail(x * 0.11 + 40, z * 0.11 - 40) > 0.2) return MAT.FLOWERS;
     if (slopeAt(x, z, height) >= 2 && detail(x * 0.2, z * 0.2) > 0.3) return MAT.ROCK;
     return 0;
   }
