@@ -30,7 +30,7 @@ Then open <http://localhost:8080>.
 | `pnpm test` | Vitest: mesher, world, damage, scoring, placement, server API |
 | `pnpm typecheck` | Strict TypeScript across the workspace |
 | `pnpm screenshots` | Playwright screenshots of every screen into `screenshots/` |
-| `pnpm gallery` | 74-image visual review set (screens, HUD states, every structure, materials, action) into `screenshots/gallery/` with an `INDEX.md` |
+| `pnpm gallery` | 87-image visual review set (screens, HUD states, every structure and prop, materials, action) into `screenshots/gallery-updated/` with an `INDEX.md`; `screenshots/gallery-before/` keeps the pre-overhaul set for before/after comparison |
 | `pnpm diagrams` | Validate the Mermaid diagrams in `docs/` |
 | `node scripts/dev/e2e.mjs` | Play a full round through the DOM headlessly |
 

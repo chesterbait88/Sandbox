@@ -4,7 +4,8 @@ dist
 .DS_Store
 data/
 screenshots/*.png
-!screenshots/gallery/
+!screenshots/gallery-before/
+!screenshots/gallery-updated/
 screenshots/.data*
 .vite
 .ccr-ca.crt

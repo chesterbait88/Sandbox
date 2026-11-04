@@ -663,7 +663,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `isTheme(t)`, `maxScoreFor(theme)`
 - `scripts/screenshots.mjs` — Playwright capture of `?screen=` pages against the built server
 - `scripts/dev/probe.mjs` — headless probe that evaluates a script against `window.__vw`
-- `scripts/gallery.mjs` — the committed visual review gallery (`screenshots/gallery/`): drives screens, HUD states, action moments, every structure (3/4 + close-up), terrain, materials and weapons through `window.__gal` helpers (free camera, structure framing, terrain-relative standing)
+- `scripts/gallery.mjs` — the committed visual review gallery (`screenshots/gallery-updated/`; `screenshots/gallery-before/` is the frozen pre-overhaul set): drives screens, HUD states, action moments, every structure (3/4 + close-up), terrain, materials and weapons through `window.__gal` helpers (free camera, structure framing, terrain-relative standing)
 - `scripts/dev/e2e.mjs` — a full round through the DOM
 
 ## Built mechanics → implementing function

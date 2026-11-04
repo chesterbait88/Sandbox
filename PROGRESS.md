@@ -15,7 +15,7 @@
 - Open decisions: see DECISIONS.md ("Visual overhaul" onward). The working brief (`OVERHAUL.md`) was folded into DECISIONS.md and this entry and removed. Gallery review after the first regeneration fixed three things: downtown was lit too dark to tell glass from concrete (brighter blue hour), the combo badge overlapped the corner timer (moved to the bar's left), and the C4 gallery step stood inside the new office block's lobby (it now walks up to the first wall it sees).
 
 ## Visual review gallery
-- `pnpm gallery` writes 87 JPEGs plus `INDEX.md` to `screenshots/gallery/` (committed): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure and two props per theme from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
+- `pnpm gallery` writes 87 JPEGs plus `INDEX.md` to `screenshots/gallery-updated/` (committed; `screenshots/gallery-before/` is the frozen 74-image pre-overhaul set): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure and two props per theme from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
 
 ## Final state (end of run)
 
