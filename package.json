@@ -1,0 +1,19 @@
+{
+  "name": "voxel-wreck",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./client --filter ./server dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "screenshots": "node scripts/screenshots.mjs",
+    "start": "node server/dist/index.js"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.3"
+  }
+}

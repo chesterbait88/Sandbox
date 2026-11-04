@@ -1,0 +1,12 @@
+services:
+  voxel-wreck:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SCORE_SECRET=${SCORE_SECRET:-change-me}
+      - DATA_DIR=/data
+    volumes:
+      - scores:/data
+volumes:
+  scores:
