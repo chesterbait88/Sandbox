@@ -9,6 +9,7 @@
     "test": "vitest run",
     "typecheck": "pnpm -r typecheck",
     "screenshots": "node scripts/screenshots.mjs",
+    "diagrams": "node scripts/check-diagrams.mjs",
     "start": "node server/dist/index.js"
   },
   "devDependencies": {

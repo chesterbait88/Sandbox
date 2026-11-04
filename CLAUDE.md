@@ -19,8 +19,11 @@ You are building a first-person browser demolition game. The full design is in S
 - Keep the module interfaces listed in SPEC.md "Project structure" stable so pieces can be tested alone.
 
 ## Commands
-- `pnpm install` · `pnpm dev` (client on 5173 proxying /api to server on 8080) · `pnpm build` · `pnpm test` · `pnpm screenshots` · `pnpm start` (serve built client + API on 8080)
+- `pnpm install` · `pnpm dev` (client on 5173 proxying /api to server on 8080) · `pnpm build` · `pnpm test` · `pnpm screenshots` · `pnpm diagrams` · `pnpm start` (serve built client + API on 8080)
 - Docker is deferred: containerize after the game runs locally (`Dockerfile` is provided but not part of any gate).
+
+## Living diagrams (grow with the build, never written ahead of it)
+docs/PLAYER-FLOW.md and docs/DEVELOPER-TREE.md describe the game as it actually exists at each gate. At every phase gate: add what that phase made real, revise anything the phase changed, move items out of the "Not yet playable" / "Planned, not built" lists as they become real, and append a dated changelog line to both files. Only draw what the current commit does. Keep every diagram one screen tall; split rather than cram. Validate Mermaid with `mmdc` (from @mermaid-js/mermaid-cli) before committing (`pnpm diagrams` runs it over every block in docs/). When a phase changes a decision, update the diagram and note it in DECISIONS.md.
 
 ## Style
 - TypeScript strict. Small files, one responsibility each. Typed event emitter between gameplay and UI; gameplay code never touches the DOM.
