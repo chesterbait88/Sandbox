@@ -1,11 +1,17 @@
 import * as THREE from 'three';
 import { LOADOUT, SCORING, VIEW_MODEL, WEAPONS } from '@vw/config';
 import { Screen } from '../Screen';
+import { CONTROLS } from '../controls';
 import { button, fmt, h } from '../dom';
 import type { Flow } from '../../game/Flow';
 import type { Game } from '../../game/Game';
 import { buildModelMesh } from '../../player/ViewModel';
 import { THEMES } from '@vw/config';
+
+/** Viewport fill behind each weapon model (matches the panel colour in styles.css). */
+const VIEW_CLEAR = '#10152a';
+/** Small models (grenade, C4) are scaled up toward the longest model, at most this much. */
+const SHOWCASE_MAX_SCALE = 2.6;
 
 /** The briefing: eight slots with spinning voxel models rendered through scissored viewports. */
 export class LoadoutScreen extends Screen {
@@ -52,16 +58,28 @@ export class LoadoutScreen extends Screen {
         const plus = button('+', 'tiny', () => { flow.adjust(w.id, 1); this.refresh(); });
         buy.append(minus, h('span', 'cost', `${LOADOUT.costs[w.id]} / ${w.kind === 'thrown' || w.kind === 'placed' ? 'each' : 'round'}`), plus);
       } else buy.append(h('span', 'cost', 'FREE'));
-      slot.append(h('div', 'slot-num', String(w.slot)), view, h('div', 'slot-name', w.name.toUpperCase()), h('div', 'slot-role', w.role), ammo, buy);
+      const body = h('div', 'slot-body');
+      body.append(h('div', 'slot-name', w.name.toUpperCase()), h('div', 'slot-role', w.role), ammo, buy);
+      slot.append(h('div', 'slot-num', String(w.slot)), view, body);
       row.append(slot);
       const model = buildModelMesh(w.model, VIEW_MODEL.size, VIEW_MODEL.voxelM);
       model.visible = false;
       this.scene.add(model);
       this.slots.push({ el: slot, view, model, ammo, id: w.id, buy });
     }
+    // The showcase camera is framed for the longest model; smaller ones scale up toward that size.
+    const longest = (g: THREE.Group) => { const e = g.userData.extent as { x: number; y: number; z: number }; return Math.max(e.x, e.y, e.z); };
+    const ref = Math.max(...this.slots.map((s) => longest(s.model)));
+    for (const s of this.slots) s.model.scale.setScalar(Math.min(SHOWCASE_MAX_SCALE, ref / longest(s.model)));
+    const controls = h('div', 'controls');
+    for (const [key, what] of CONTROLS) {
+      const k = h('div', 'key');
+      k.append(h('kbd', '', key), h('span', '', what));
+      controls.append(k);
+    }
     const nav = h('div', 'nav');
     nav.append(button('BACK', '', () => flow.toWorldPicker()), button('DEPLOY', 'primary big', () => void flow.deploy()));
-    this.el.append(row, nav);
+    this.el.append(row, controls, nav);
   }
 
   private setMode(m: 'fixed' | 'custom'): void {
@@ -91,12 +109,17 @@ export class LoadoutScreen extends Screen {
     this.refresh();
   }
 
+  private viewClear = new THREE.Color(VIEW_CLEAR);
+  private prevClear = new THREE.Color();
+
   /** Render the spinning models into each slot's viewport. Called after the main render. */
   renderViews(renderer: THREE.WebGLRenderer, dt: number): void {
     if (!this.visible) return;
     this.t += dt;
     const H = renderer.domElement.clientHeight;
     const pr = renderer.getPixelRatio();
+    renderer.getClearColor(this.prevClear);
+    renderer.setClearColor(this.viewClear, 1);
     renderer.setScissorTest(true);
     for (const s of this.slots) {
       const r = s.view.getBoundingClientRect();
@@ -107,10 +130,12 @@ export class LoadoutScreen extends Screen {
       this.camera.updateProjectionMatrix();
       renderer.setViewport(r.left * pr, (H - r.bottom) * pr, r.width * pr, r.height * pr);
       renderer.setScissor(r.left * pr, (H - r.bottom) * pr, r.width * pr, r.height * pr);
+      renderer.clear(true, true, false);
       renderer.render(this.scene, this.camera);
       s.model.visible = false;
     }
     renderer.setScissorTest(false);
+    renderer.setClearColor(this.prevClear, 1);
     renderer.setViewport(0, 0, renderer.domElement.clientWidth * pr, H * pr);
   }
 }

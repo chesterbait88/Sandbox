@@ -40,7 +40,9 @@ export const RENDER = {
   /** Number of mesher workers. */
   mesherWorkers: 2,
   sunIntensity: 2.2,
-  hemiIntensity: 0.9,
+  hemiIntensity: 1.0,
+  /** Distance of the sun light from the arena centre along the theme's sunDir (m). */
+  sunDistanceM: 150,
   shadowMapSize: 2048,
   shadowBias: -0.0002,
   shadowNormalBias: 0.6,

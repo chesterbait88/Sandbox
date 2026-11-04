@@ -35,7 +35,6 @@ export class GameRenderer {
     this.sun.shadow.mapSize.set(RENDER.shadowMapSize, RENDER.shadowMapSize);
     this.sun.shadow.bias = RENDER.shadowBias;
     this.sun.shadow.normalBias = RENDER.shadowNormalBias;
-    this.sun.position.set(WORLD_SIZE_M.x * 0.5 + 60, 120, WORLD_SIZE_M.z * 0.5 - 40);
     this.sun.target.position.set(WORLD_SIZE_M.x * 0.5, 0, WORLD_SIZE_M.z * 0.5);
     this.scene.add(this.sun, this.sun.target);
     this.hemi = new THREE.HemisphereLight('#cfe2f3', '#5a4a3a', RENDER.hemiIntensity);
@@ -85,7 +84,12 @@ export class GameRenderer {
     this.scene.background = new THREE.Color(t.sky);
     this.scene.fog = new THREE.FogExp2(t.fog, t.fogDensity);
     this.sun.color.set(t.sun);
+    this.sun.intensity = RENDER.sunIntensity * t.sunMul;
+    const d = new THREE.Vector3(...t.sunDir).normalize().multiplyScalar(RENDER.sunDistanceM);
+    this.sun.position.set(WORLD_SIZE_M.x * 0.5 + d.x, d.y, WORLD_SIZE_M.z * 0.5 + d.z);
     this.hemi.color.set(t.horizon);
+    this.hemi.groundColor.set(t.hemiGround);
+    this.hemi.intensity = RENDER.hemiIntensity * t.hemiMul;
   }
 
   render(): void {

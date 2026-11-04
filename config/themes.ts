@@ -26,6 +26,13 @@ export interface ThemeDef {
   fog: string;
   sun: string;
   fogDensity: number;
+  /** Hemisphere light: sky side is `horizon`, ground side is this. */
+  hemiGround: string;
+  /** Direction toward the sun (unitless); low y = golden hour. */
+  sunDir: [number, number, number];
+  /** Sun and hemisphere intensity multipliers on RENDER.sunIntensity / hemiIntensity. */
+  sunMul: number;
+  hemiMul: number;
   /** Card accent colour in the picker. */
   accent: string;
 }
@@ -47,12 +54,17 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     propCount: [10, 16],
     structureCount: [6, 9],
     minGapM: 6,
-    sky: '#ffb36b',
-    horizon: '#ffe3b0',
-    fog: '#f0c995',
-    sun: '#fff1d6',
-    fogDensity: 0.0035,
-    accent: '#ff8a3c'
+    // Golden hour: violet sky, pink haze, low gold sun.
+    sky: '#6a2f9e',
+    horizon: '#ff9fc0',
+    fog: '#e58fb0',
+    sun: '#ffd28a',
+    fogDensity: 0.005,
+    hemiGround: '#8a5a30',
+    sunDir: [1, 0.42, -0.55],
+    sunMul: 1.05,
+    hemiMul: 1.1,
+    accent: '#ff2fd0'
   },
   downtown: {
     id: 'downtown',
@@ -71,12 +83,17 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     propCount: [12, 18],
     structureCount: [7, 10],
     minGapM: 6,
-    sky: '#6a8fc9',
-    horizon: '#c9d9ef',
-    fog: '#b8c6da',
-    sun: '#ffffff',
-    fogDensity: 0.004,
-    accent: '#4fc3ff'
+    // Blue hour: deep sky, cool haze, warm sodium-tinted key light so the neon signs carry.
+    sky: '#152452',
+    horizon: '#5c7fd6',
+    fog: '#3b508f',
+    sun: '#ffe2b8',
+    fogDensity: 0.0055,
+    hemiGround: '#2a1d3f',
+    sunDir: [0.6, 0.7, 0.35],
+    sunMul: 0.95,
+    hemiMul: 1.25,
+    accent: '#22f4ff'
   },
   park: {
     id: 'park',
@@ -95,12 +112,17 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     propCount: [14, 22],
     structureCount: [6, 9],
     minGapM: 6,
-    sky: '#7fb8ff',
-    horizon: '#e4f0ff',
-    fog: '#cfe2f3',
-    sun: '#fff8e6',
-    fogDensity: 0.003,
-    accent: '#6ee37a'
+    // Evening: teal-blue sky, soft warm sun just above the trees.
+    sky: '#2b5a9a',
+    horizon: '#a8d8ff',
+    fog: '#8fbde0',
+    sun: '#fff0c8',
+    fogDensity: 0.0045,
+    hemiGround: '#2d4a24',
+    sunDir: [-0.7, 0.5, 0.45],
+    sunMul: 1.0,
+    hemiMul: 1.1,
+    accent: '#9dff3a'
   }
 };
 

@@ -5,11 +5,16 @@ import type { Input } from '../../player/Input';
 import type { Flow } from '../../game/Flow';
 import { events } from '../../state/events';
 
+/** Ring radius of the fanned-out picker (px). */
+const RING_PX = 170;
+
 /** Bottom-left: current weapon icon; holding Q fans the eight weapons out and mouse direction picks. */
 export class Radial {
   readonly el = h('div', 'hud-radial');
   private hub: HTMLElement;
   private wheel: HTMLElement;
+  /** Full-screen dim while the wheel is open; UI appends it to the HUD beside `el`. */
+  readonly backdrop = h('div', 'radial-backdrop');
   private segs: HTMLElement[] = [];
   private open = false;
   private mx = 0;
@@ -22,8 +27,8 @@ export class Radial {
     WEAPONS.forEach((w, i) => {
       const seg = h('div', 'radial-seg');
       const a = (i / WEAPONS.length) * Math.PI * 2 - Math.PI / 2;
-      seg.style.setProperty('--x', `${Math.cos(a) * 110}px`);
-      seg.style.setProperty('--y', `${Math.sin(a) * 110}px`);
+      seg.style.setProperty('--x', `${Math.cos(a) * RING_PX}px`);
+      seg.style.setProperty('--y', `${Math.sin(a) * RING_PX}px`);
       seg.innerHTML = `<b>${w.slot}</b><span>${w.name.toUpperCase()}</span>`;
       this.wheel.append(seg);
       this.segs.push(seg);

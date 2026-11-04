@@ -16,12 +16,18 @@ export class Callouts {
     });
   }
 
+  /** Slide the band up from the bottom edge and fade it; flash the screen faintly. Web Animations, so no layout is forced. */
   show(text: string, sub: string): void {
     this.banner.innerHTML = `<b>${text}</b><span>${sub}</span>`;
-    this.banner.classList.remove('slam');
-    this.flash.classList.remove('go');
-    void this.banner.offsetWidth;
-    this.banner.classList.add('slam');
-    this.flash.classList.add('go');
+    this.banner.animate(
+      [
+        { transform: 'translate(-50%, 40px)', opacity: 0, offset: 0 },
+        { transform: 'translate(-50%, 0)', opacity: 1, offset: 0.14 },
+        { transform: 'translate(-50%, 0)', opacity: 1, offset: 0.82 },
+        { transform: 'translate(-50%, -10px)', opacity: 0, offset: 1 }
+      ],
+      { duration: 1800, easing: 'cubic-bezier(.1,.9,.2,1)', fill: 'forwards' }
+    );
+    this.flash.animate([{ opacity: 0.22 }, { opacity: 0 }], { duration: 400, easing: 'ease-out' });
   }
 }
