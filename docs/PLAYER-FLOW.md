@@ -16,11 +16,11 @@ flowchart LR
     E --> E
 ```
 
-What the player sees: a sunlit voxel desert with rolling dunes and one asphalt road through the middle, a small caption at the top naming the theme and seed, and an optional stats readout (F3).
+What the player sees: a sunlit voxel desert with rolling dunes and one asphalt road through the middle, a small caption at the top naming the theme and seed, and an optional stats readout (F3). Adding `test=wall` to the address stamps a brick wall with a fuel tank and a propane bottle behind it, a glass pane and a concrete slab, so there is something to wreck.
 
 ## The in-round loop as it works now
 
-There is no clock, no score and no weapons yet. The loop is movement only.
+There is no clock and no score yet. The loop is movement plus wrecking.
 
 ```mermaid
 flowchart TD
@@ -39,6 +39,47 @@ flowchart TD
     R --> I
 ```
 
+### Wrecking something
+
+Every hit, from a pickaxe tap to a C4 charge, carves a sphere out of the world. Harder materials need more energy, and energy fades toward the edge of the sphere.
+
+```mermaid
+flowchart TD
+    F[Fire, swing, throw or place] --> H{What kind of hit?}
+    H -->|melee or bullet| V[Find the voxel in the crosshair]
+    H -->|rocket| P[Rocket flies until it touches something]
+    H -->|grenade| B[Grenade arcs, bounces, rests, fuse 3 s]
+    H -->|C4| C[Charge sticks to the surface<br/>fires on the next click]
+    V --> D[Carve a sphere]
+    P --> D
+    B --> D
+    C --> D
+    D --> E{Fuel, propane or<br/>transformer inside?}
+    E -->|yes| Q[150 ms later it detonates<br/>with its own sphere]
+    Q --> D
+    E -->|no| S[Debris flies, screen shakes,<br/>flash, sparks, boom]
+    D --> S
+```
+
+## A dramatic moment: grenade through a brick wall
+
+```mermaid
+sequenceDiagram
+    actor You
+    participant Wall as Brick wall
+    participant Tank as Fuel tank behind it
+    participant Bottle as Propane bottle
+    You->>Wall: throw a grenade at the base
+    Note over Wall: grenade bounces, settles, 3 s fuse
+    Wall-->>You: blast carves the wall, bricks fly
+    Wall->>Tank: sphere reaches the tank
+    Note over Tank: 150 ms pause
+    Tank-->>You: bigger blast, harder shake, deeper boom
+    Tank->>Bottle: sphere reaches the propane
+    Note over Bottle: 150 ms pause
+    Bottle-->>You: third blast, sparks everywhere
+```
+
 ## Controls that work
 
 | Key | Action |
@@ -47,8 +88,28 @@ flowchart TD
 | W A S D | Move |
 | Shift | Sprint |
 | Space | Jump |
+| Mouse 1 | Fire, swing, throw, place C4 (click again to detonate) |
+| Mouse 2 | Aim: tighter spread (C4: detonate) |
+| 1–8, wheel | Switch weapon |
+| R | Reload |
+| G | Throw a grenade from any weapon |
 | Esc | Release the mouse |
 | F3 | Toggle the stats readout |
+
+## The loadout
+
+Everyone carries the same eight slots. Ammo is for the whole round; nothing refills yet.
+
+| Slot | Weapon | How it hits | Good against | Ammo |
+| --- | --- | --- | --- | --- |
+| 1 | Pickaxe | Short swing, one voxel at a time | Anything up to concrete, slowly | Unlimited |
+| 2 | Bat | Wide slow swing | Glass, drywall, wood | Unlimited |
+| 3 | Pistol | One voxel per shot | Glass, drywall, wood; sets off tanks | 12 per mag, 72 total |
+| 4 | Shotgun | Eight pellets in a cone | Walls up close, even concrete | 6 per mag, 30 total |
+| 5 | Rifle | Full auto, 10 per second | Brick and concrete | 30 per mag, 120 total |
+| 6 | Rocket launcher | Explodes on contact, 3 m sphere | Whole walls at range | 6 |
+| 7 | Grenade | Bounces, 3 s fuse, 2.5 m sphere | Rooms and anything soft | 8 |
+| 8 | C4 | Stuck to a surface, 4 m sphere, all charges fire together | Concrete | 4 |
 
 ## The arena today
 
@@ -77,17 +138,17 @@ All three terrains generate from a seed. No structures stand on any of them yet,
 
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
-- Any destruction: no weapon fires, swings, throws or places anything, so nothing can be carved.
-- Debris, screen shake, flashes, particles, sounds.
-- Chain reactions through fuel tanks, propane or transformers (nothing volatile is placed in the world).
 - Structures: gas station, diner, billboard, water tower, propane cage, convenience store, office block, parking structure, bus shelter, monument, fountain, gazebo, statue, maintenance shed.
 - Scoring, combo multiplier, leveled bonus, milestones and rewards.
 - The 3-minute round clock and the round-end slow motion.
-- The weapon loadout, weapon switching, the radial picker, ammo and reloading, view models.
+- The radial weapon picker (Q / wheel fan-out) and its slow motion; aim-zoom (aiming only tightens spread today).
+- Hit markers, crosshair, any on-screen ammo or weapon readout (ammo is tracked but not shown).
 - Start menu, world picker, loadout briefing, countdown, pause, results, initials entry, leaderboard.
 - Settings (sensitivity, volume, FOV).
+- Anything volatile in a generated arena: tanks only exist in the `test=wall` harness until structures arrive.
 - The server: sessions, score submission, leaderboard storage.
 
 ## Changelog
 
+- 2026-11-04: Phase 2 — all eight weapons fire, carving, chain reactions, debris, effects and sound; test wall harness
 - 2026-11-04: Initial snapshot at 580cf52

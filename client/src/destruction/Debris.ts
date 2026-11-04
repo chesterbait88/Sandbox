@@ -31,7 +31,10 @@ export class Debris {
   constructor(private physics: PhysicsWorld) {
     const geo = new THREE.BoxGeometry(1, 1, 1);
     // Flat normals; emit attribute required by the voxel material.
-    geo.setAttribute('emit', new THREE.BufferAttribute(new Uint8Array(geo.attributes.position.count), 1, true));
+    const n = geo.attributes.position.count;
+    geo.setAttribute('emit', new THREE.BufferAttribute(new Uint8Array(n), 1, true));
+    // Vertex colour is white; the per-instance colour carries the material tint.
+    geo.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(n * 3).fill(255), 3, true));
     const mat = createOpaqueMaterial();
     this.mesh = new THREE.InstancedMesh(geo, mat, DEBRIS.cap);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -69,7 +72,7 @@ export class Debris {
         const py = (v.y + 0.5) * VOXEL_SIZE + (k ? (Math.random() - 0.5) * 0.3 : 0);
         const pz = (v.z + 0.5) * VOXEL_SIZE + (k ? (Math.random() - 0.5) * 0.3 : 0);
         const body = this.physics.world.createRigidBody(
-          R.RigidBodyDesc.dynamic().setTranslation(px, py, pz).setCcdEnabled(true).setAngularDamping(0.5).setLinearDamping(0.05)
+          R.RigidBodyDesc.dynamic().setTranslation(px, py, pz).setCcdEnabled(DEBRIS.ccd).setAngularDamping(0.5).setLinearDamping(0.05)
         );
         this.physics.world.createCollider(R.ColliderDesc.cuboid(size / 2, size / 2, size / 2).setRestitution(0.25).setFriction(0.8).setDensity(1.5), body);
         let dx = px - center.x;

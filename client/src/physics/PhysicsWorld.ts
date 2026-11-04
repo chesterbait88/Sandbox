@@ -1,5 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { VOXEL_SIZE, WORLD_SIZE_M, WORLD_VOXELS } from '@vw/config';
+import { PHYSICS, VOXEL_SIZE, WORLD_SIZE_M, WORLD_VOXELS } from '@vw/config';
 
 /**
  * Rapier world for debris only. The voxel world is represented by one static heightfield of the
@@ -11,7 +11,7 @@ export class PhysicsWorld {
   private terrain: RAPIER.Collider | null = null;
   R!: typeof RAPIER;
   private accumulator = 0;
-  readonly step = 1 / 60;
+  readonly step: number = PHYSICS.step;
 
   static init(): Promise<typeof RAPIER> {
     if (!PhysicsWorld.ready) PhysicsWorld.ready = RAPIER.init().then(() => RAPIER);
@@ -47,11 +47,11 @@ export class PhysicsWorld {
   update(dt: number): void {
     this.accumulator += dt;
     let n = 0;
-    while (this.accumulator >= this.step && n < 4) {
+    while (this.accumulator >= this.step && n < PHYSICS.maxSubSteps) {
       this.world.step();
       this.accumulator -= this.step;
       n++;
     }
-    if (n === 4) this.accumulator = 0;
+    if (n === PHYSICS.maxSubSteps) this.accumulator = 0;
   }
 }

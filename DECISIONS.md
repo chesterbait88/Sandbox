@@ -9,3 +9,11 @@
 - **Sidewalk** (id 8) was added as a terrain-valued concrete look-alike so Downtown sidewalks score nothing.
 - **FPS claims**: the sandbox has no GPU; frame timing is measured for CPU-side work (mesher, controller, damage) and the GPU budget is kept by construction (few hundred draw calls, vertex colours only).
 - **Volatile dedupe radius is 2 m** (spec said 1 m): a 1×1×2 m fuel tank detonated twice at 1 m. One detonation per tank is the intent.
+- **Grenades and rockets use hand-rolled ballistics against the voxel grid** (raycast per step, reflect on bounce) instead of Rapier bodies: Rapier only knows the terrain heightfield, so a Rapier grenade would fly through every wall. Rapier is reserved for debris.
+- **Bullet and melee damage is centred on the hit voxel's centre** (`snapToVoxelCentre`) so the hit voxel always receives full power and hits at voxel edges do not fizzle. Pistol power was retuned 5 → 2.5 and rifle 9 → 6 so that pistol pops glass/drywall/wood, rifle and shotgun eat brick and concrete, and nothing but explosives touches steel.
+- **View-model voxels are 0.025 m, not 0.1 m**: at 0.1 m a 24-voxel gun is 2.4 m long and fills the screen. The models still read as chunkier than the world.
+- **Debris has CCD off and physics takes at most 2 sub-steps per frame**; CCD on 24 fresh bodies cost 15 ms in one step. Pieces move under 0.3 m per step so tunnelling through the heightfield is not an issue.
+- **A warm-up pass runs at world load** (scratch carve, Rapier steps, AudioContext creation) because the first calls were 10–50× slower than warm ones.
+- **One InstancedMesh for all debris** with per-instance colour instead of one per material; same look, one draw call.
+- **The terrain heightfield is static**: carving terrain does not update it, so debris may rest on the pre-crater surface. Accepted for the MVP.
+- **Volatile dedupe radius is 2 m** (see above).

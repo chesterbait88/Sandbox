@@ -9,6 +9,8 @@ export const DEBRIS = {
   impulseScale: 0.3,
   impulseJitter: 0.2,
   spinMax: 6,
+  /** Continuous collision detection per piece (expensive; pieces move < 0.3 m per step). */
+  ccd: false,
   /** Glass spawns this many more, smaller pieces. */
   glassCountMul: 2,
   glassSizeMul: 0.5
@@ -35,4 +37,10 @@ export const AUDIO = {
   /** Low-pass cutoff range by distance (Hz). */
   lowpassNearHz: 8000,
   lowpassFarHz: 600
+} as const;
+
+export const PHYSICS = {
+  /** Fixed step (s) and the most steps taken in one frame before time is dropped. */
+  step: 1 / 60,
+  maxSubSteps: 2
 } as const;

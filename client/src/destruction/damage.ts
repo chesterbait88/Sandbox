@@ -32,8 +32,9 @@ export class Destruction {
   private now = 0;
   /** Detonations resolved this frame (for stats). */
   detonationsThisFrame = 0;
-  /** Scratch buffer for the chunk-dirty set. */
-  private scratch: Destroyed[] = [];
+  /** Pooled Destroyed records: the records in a returned list are reused by the next applyDamage call. */
+  private pool: Destroyed[] = [];
+  private result: Destroyed[] = [];
 
   constructor(private world: World) {}
 
@@ -76,7 +77,10 @@ export class Destruction {
     const x1 = Math.min(world.mat.length ? 255 : 0, Math.ceil(cx + rv));
     const y1 = Math.min(127, Math.ceil(cy + rv));
     const z1 = Math.min(255, Math.ceil(cz + rv));
-    const destroyed: Destroyed[] = (this.scratch = []);
+    const destroyed = this.result;
+    destroyed.length = 0;
+    const pool = this.pool;
+    let used = 0;
     const queuedHere: Vec3[] = [];
     let glass = 0;
     const mat = world.mat;
@@ -96,7 +100,15 @@ export class Destruction {
           if (d > radius) continue;
           const energy = power * (1 - d / radius);
           if (!(shattersOf[m] && energy > 0) && energy < hardnessOf[m]) continue;
-          destroyed.push({ x, y, z, mat: m, owner: owner[i] });
+          let rec = pool[used];
+          if (!rec) rec = pool[used] = { x: 0, y: 0, z: 0, mat: 0, owner: 0 };
+          used++;
+          rec.x = x;
+          rec.y = y;
+          rec.z = z;
+          rec.mat = m;
+          rec.owner = owner[i];
+          destroyed.push(rec);
           if (shattersOf[m]) glass++;
           mat[i] = 0;
           owner[i] = 0;
@@ -114,7 +126,8 @@ export class Destruction {
       }
     }
     events.emit('hit', { center, radius, power, destroyed, source, glass });
-    return destroyed;
+    // The list is a fresh array (cheap); the records in it are pooled and reused on the next call.
+    return destroyed.slice();
   }
 
   private nearQueued(p: Vec3, local: Vec3[], r: number): boolean {

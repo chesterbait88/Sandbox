@@ -34,6 +34,7 @@ export const MATERIALS: Record<number, Material> = {
   14: { id: 14, name: 'Concrete', color: '#9a9a94', value: 5, hardness: 5 },
   15: { id: 15, name: 'Steel', color: '#6b7280', value: 8, hardness: 8 },
   16: { id: 16, name: 'Marble', color: '#e6e2d8', value: 6, hardness: 5, pattern: 'marble' },
+  18: { id: 18, name: 'Skin', color: '#e0b090', value: 0, hardness: 1 },
   17: { id: 17, name: 'Neon', color: '#ff4fa3', value: 2, hardness: 1, emissive: true },
   20: { id: 20, name: 'Fuel tank', color: '#c0392b', value: 4, hardness: 2, volatile: { power: 60, radius: 5 } },
   21: { id: 21, name: 'Propane', color: '#e0e0e0', value: 3, hardness: 1, volatile: { power: 35, radius: 3 } },
