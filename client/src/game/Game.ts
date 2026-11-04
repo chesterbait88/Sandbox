@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLLAPSE, MAT, MATERIALS, PHYSICS, PLAYER, RENDER, WEAPONS, WEAPON_TUNING, WORLD_VOXELS, type ThemeId } from '@vw/config';
+import { COLLAPSE, MAT, MATERIALS, PHYSICS, PLAYER, RENDER, VOXEL_SIZE, WEAPONS, WEAPON_TUNING, WORLD_SIZE_M, WORLD_VOXELS, type ThemeId } from '@vw/config';
 import { GameRenderer } from '../render/Renderer';
 import { ChunkRenderer } from '../world/ChunkRenderer';
 import { World } from '../world/World';
@@ -39,6 +39,9 @@ export class Game {
   collapse!: Collapse;
   theme: ThemeId = 'desert';
   seed = 'ALPHA';
+  /** Exposed for the gallery and probe scripts, so they never hardcode the scale. */
+  readonly voxelSize = VOXEL_SIZE;
+  readonly worldSize = WORLD_SIZE_M;
   /** Global time scale (slow-mo). */
   timeScale = 1;
   /** Game time in ms, scaled. */
@@ -99,11 +102,14 @@ export class Game {
    */
   warmup(): void {
     const scratch = new World();
-    for (let x = 100; x < 140; x++) for (let y = 10; y < 40; y++) for (let z = 100; z < 140; z++) scratch.mat[x + 256 * (z + 256 * y)] = MAT.BRICK;
+    const cx = WORLD_VOXELS.x >> 1;
+    const cz = WORLD_VOXELS.z >> 1;
+    const r = Math.round(10 / VOXEL_SIZE);
+    for (let x = cx - r; x < cx + r; x++) for (let y = 2; y < 2 + 2 * r; y++) for (let z = cz - r; z < cz + r; z++) scratch.mat[voxelIndex(x, y, z)] = MAT.BRICK;
     const d = new Destruction(scratch);
     this.warming = true;
     this.audio.prime();
-    for (let k = 0; k < 4; k++) d.applyDamage({ x: 55 + k * 3, y: 12, z: 60 }, 4, 90, 'warmup');
+    for (let k = 0; k < 4; k++) d.applyDamage({ x: cx * VOXEL_SIZE - 6 + k * 3, y: (2 + r) * VOXEL_SIZE, z: cz * VOXEL_SIZE }, 4, 90, 'warmup');
     // Step the physics with live bodies so the first real blast does not pay the first-contact cost.
     for (let k = 0; k < 6; k++) {
       this.physics.world.step();
@@ -294,18 +300,20 @@ export class Game {
   stampSwatches(): { ids: number[]; names: string[] } {
     const w = this.world;
     const ids = Object.keys(MATERIALS).map(Number).sort((a, b) => a - b);
-    const sx = Math.round(w.spawn.x * 2) - ids.length * 2;
-    const sz = Math.round(w.spawn.z * 2) + 12;
+    const v = VOXEL_SIZE;
+    const c = Math.round(1 / v); // voxels per metre: swatches are 1 m cubes
+    const sx = Math.round(w.spawn.x / v) - ids.length * c;
+    const sz = Math.round(w.spawn.z / v) + 6 * c;
     // Each cube sits on its own column's surface so the row follows the dunes beyond the pad.
     ids.forEach((id, i) => {
-      const x0 = sx + i * 4;
+      const x0 = sx + i * 2 * c;
       const base = w.surfaceY(x0, sz) + 1;
-      for (let x = x0; x < x0 + 2; x++) for (let y = base; y < base + 2; y++) for (let z = sz; z < sz + 2; z++) w.setVoxel(x, y, z, id, 1);
+      for (let x = x0; x < x0 + c; x++) for (let y = base; y < base + c; y++) for (let z = sz; z < sz + c; z++) w.setVoxel(x, y, z, id, 1);
     });
     // A taller wall segment behind the row to show rows and patterns at scale.
-    for (let x = sx; x < sx + ids.length * 4; x++) {
-      const base = w.surfaceY(x, sz + 8) + 1;
-      for (let y = base; y < base + 6; y++) w.setVoxel(x, y, sz + 8, [MAT.BRICK, MAT.WOOD, MAT.CONCRETE, MAT.MARBLE, MAT.STEEL, MAT.DRYWALL][Math.floor((x - sx) / 12) % 6], 1);
+    for (let x = sx; x < sx + ids.length * 2 * c; x++) {
+      const base = w.surfaceY(x, sz + 4 * c) + 1;
+      for (let y = base; y < base + 3 * c; y++) w.setVoxel(x, y, sz + 4 * c, [MAT.BRICK, MAT.WOOD, MAT.CONCRETE, MAT.MARBLE, MAT.STEEL, MAT.DRYWALL][Math.floor((x - sx) / (6 * c)) % 6], 1);
     }
     return { ids, names: ids.map((id) => MATERIALS[id].name) };
   }
@@ -313,14 +321,15 @@ export class Game {
   /** Debug: stamp a brick wall with a fuel tank behind it in front of the spawn. */
   stampTestWall(): void {
     const w = this.world;
-    const sx = Math.round(w.spawn.x * 2);
-    const sz = Math.round(w.spawn.z * 2) + 16;
+    const m = (metres: number) => Math.round(metres / VOXEL_SIZE);
+    const sx = m(w.spawn.x);
+    const sz = m(w.spawn.z) + m(8);
     const base = w.surfaceY(sx, sz) + 1;
-    for (let x = sx - 8; x <= sx + 8; x++) for (let y = base; y < base + 8; y++) for (let z = sz; z < sz + 2; z++) w.setVoxel(x, y, z, MAT.BRICK, 1);
-    for (let x = sx - 2; x <= sx + 1; x++) for (let y = base; y < base + 2; y++) for (let z = sz + 2; z < sz + 6; z++) w.setVoxel(x, y, z, MAT.FUEL, 1);
-    for (let x = sx + 5; x <= sx + 6; x++) for (let y = base; y < base + 3; y++) for (let z = sz + 4; z < sz + 6; z++) w.setVoxel(x, y, z, MAT.PROPANE, 1);
-    for (let x = sx - 8; x <= sx + 8; x++) for (let y = base; y < base + 6; y++) w.setVoxel(x, y, sz + 10, MAT.GLASS, 1);
-    for (let x = sx - 8; x <= sx + 8; x++) for (let y = base; y < base + 6; y++) w.setVoxel(x, y, sz + 12, MAT.CONCRETE, 1);
+    for (let x = sx - m(4); x <= sx + m(4); x++) for (let y = base; y < base + m(4); y++) for (let z = sz; z < sz + m(1); z++) w.setVoxel(x, y, z, MAT.BRICK, 1);
+    for (let x = sx - m(1); x < sx + m(1); x++) for (let y = base; y < base + m(1); y++) for (let z = sz + m(1); z < sz + m(3); z++) w.setVoxel(x, y, z, MAT.FUEL, 1);
+    for (let x = sx + m(2.5); x < sx + m(3.5); x++) for (let y = base; y < base + m(1.5); y++) for (let z = sz + m(2); z < sz + m(3); z++) w.setVoxel(x, y, z, MAT.PROPANE, 1);
+    for (let x = sx - m(4); x <= sx + m(4); x++) for (let y = base; y < base + m(3); y++) w.setVoxel(x, y, sz + m(5), MAT.GLASS, 1);
+    for (let x = sx - m(4); x <= sx + m(4); x++) for (let y = base; y < base + m(3); y++) w.setVoxel(x, y, sz + m(6), MAT.CONCRETE, 1);
     void MATERIALS;
   }
 }

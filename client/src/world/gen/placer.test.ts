@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { THEME_IDS, WORLD_VOXELS } from '@vw/config';
+import { THEME_IDS, VOXEL_SIZE, WORLD_VOXELS } from '@vw/config';
 import { rngFromSeed } from '../../util/rng';
 import { generateTerrain } from './terrain';
 import { placeStructures } from './placer';
@@ -43,9 +43,9 @@ describe('placer', () => {
     const SX = WORLD_VOXELS.x;
     const SZ = WORLD_VOXELS.z;
     for (const s of placed.structures) {
-      const x = Math.round(s.center.x * 2);
-      const z = Math.round(s.center.z * 2);
-      let y = Math.round(s.center.y * 2);
+      const x = Math.round(s.center.x / VOXEL_SIZE);
+      const z = Math.round(s.center.z / VOXEL_SIZE);
+      let y = Math.round(s.center.y / VOXEL_SIZE);
       while (y > 0 && mat[x + SX * (z + SZ * y)] === 0) y--;
       expect(y).toBeGreaterThan(0);
     }

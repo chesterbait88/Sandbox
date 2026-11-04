@@ -1,6 +1,6 @@
 import { MATERIALS, VOLATILE, VOXEL_SIZE } from '@vw/config';
 import type { Vec3 } from '../util/vec';
-import { voxelIndex, World } from '../world/World';
+import { SX, SY, SZ, voxelIndex, World } from '../world/World';
 import { events, type Destroyed } from '../state/events';
 
 interface Pending {
@@ -74,9 +74,9 @@ export class Destruction {
     const x0 = Math.max(0, Math.floor(cx - rv));
     const y0 = Math.max(0, Math.floor(cy - rv));
     const z0 = Math.max(0, Math.floor(cz - rv));
-    const x1 = Math.min(world.mat.length ? 255 : 0, Math.ceil(cx + rv));
-    const y1 = Math.min(127, Math.ceil(cy + rv));
-    const z1 = Math.min(255, Math.ceil(cz + rv));
+    const x1 = Math.min(SX - 1, Math.ceil(cx + rv));
+    const y1 = Math.min(SY - 1, Math.ceil(cy + rv));
+    const z1 = Math.min(SZ - 1, Math.ceil(cz + rv));
     const destroyed = this.result;
     destroyed.length = 0;
     const pool = this.pool;

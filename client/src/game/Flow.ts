@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LOADOUT, PLAYER, SCORING, THEME_IDS, WEAPONS, type LoadoutMode, type ThemeId } from '@vw/config';
+import { LOADOUT, MENU_CAMERA, PLAYER, SCORING, THEME_IDS, WEAPONS, WORLD_SIZE_M, type LoadoutMode, type ThemeId } from '@vw/config';
 import type { Game } from './Game';
 import { Round } from '../state/Round';
 import { events } from '../state/events';
@@ -315,14 +315,14 @@ export class Flow {
       case 'worldPicker':
       case 'loadout':
       case 'leaderboard': {
-        this.orbitT += rawDt * 0.08;
+        this.orbitT += rawDt * MENU_CAMERA.orbitSpeed;
         const w = this.game.world;
-        const cx = 64;
-        const cz = 64;
-        const r = 70;
-        const h = (w.spawn.y ?? 20) + 26;
+        const cx = WORLD_SIZE_M.x / 2;
+        const cz = WORLD_SIZE_M.z / 2;
+        const r = MENU_CAMERA.radiusM;
+        const h = (w.spawn.y ?? 20) + MENU_CAMERA.heightM;
         cam.position.set(cx + Math.cos(this.orbitT) * r, h, cz + Math.sin(this.orbitT) * r);
-        cam.lookAt(cx, (w.spawn.y ?? 20) - 4, cz);
+        cam.lookAt(cx, (w.spawn.y ?? 20) + MENU_CAMERA.lookDownM, cz);
         return false;
       }
       case 'countdown': {

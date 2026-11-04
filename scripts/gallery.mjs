@@ -36,6 +36,8 @@ const wait = (ms) => page.waitForTimeout(ms);
 /** In-page helpers: free camera, structure framing, sim stepping. */
 const HELPERS = `
 window.__gal = {
+  V: window.__vw.voxelSize,
+  W: window.__vw.worldSize,
   free() {
     const f = window.__flow; f.state = 'paused';
     document.querySelectorAll('.screen').forEach(e => e.style.display = 'none');
@@ -43,14 +45,14 @@ window.__gal = {
     document.querySelectorAll('.debug-overlay').forEach(e => e.style.display = 'none');
   },
   cam(px, py, pz, tx, ty, tz) { const c = window.__vw.gfx.camera; c.position.set(px, py, pz); c.lookAt(tx, ty, tz); },
-  ground(x, z) { return window.__vw.world.surfaceY(Math.round(x * 2), Math.round(z * 2)) * 0.5 + 0.5; },
+  ground(x, z) { const V = this.V; return window.__vw.world.surfaceY(Math.round(x / V), Math.round(z / V)) * V + V; },
   /** Eye-height camera standing on the terrain at (x,z) looking at (tx,tz). */
   stand(x, z, tx, tz, eye = 1.6, lookDown = 0.6) { this.cam(x, this.ground(x, z) + eye, z, tx, this.ground(tx, tz) + eye - lookDown, tz); },
   struct(name, nth = 0) { return window.__vw.world.structures.filter(s => s.name === name)[nth]; },
   frame(name, azDeg, elevDeg, mul = 1.4, nth = 0) {
     const s = this.struct(name, nth); if (!s) return false;
-    const b = s.bounds; const ex = (b.x1 - b.x0 + 1) * .5, ey = (b.y1 - b.y0 + 1) * .5, ez = (b.z1 - b.z0 + 1) * .5;
-    const c = { x: (b.x0 + b.x1 + 1) * .25, y: (b.y0 + b.y1 + 1) * .25, z: (b.z0 + b.z1 + 1) * .25 };
+    const V = this.V; const b = s.bounds; const ex = (b.x1 - b.x0 + 1) * V, ey = (b.y1 - b.y0 + 1) * V, ez = (b.z1 - b.z0 + 1) * V;
+    const c = { x: (b.x0 + b.x1 + 1) * V / 2, y: (b.y0 + b.y1 + 1) * V / 2, z: (b.z0 + b.z1 + 1) * V / 2 };
     const dist = Math.max(ex, ez, ey * 1.2) * mul + 4;
     const az = azDeg * Math.PI / 180, el = elevDeg * Math.PI / 180;
     this.cam(c.x + Math.cos(az) * Math.cos(el) * dist, c.y + Math.sin(el) * dist, c.z + Math.sin(az) * Math.cos(el) * dist, c.x, c.y, c.z);
@@ -58,15 +60,15 @@ window.__gal = {
   },
   closeup(name, nth = 0, offset = 3.5) {
     const s = this.struct(name, nth); if (!s) return false;
-    const b = s.bounds; const cx = (b.x0 + b.x1 + 1) * .25; const y = b.y0 * .5 + 1.6;
+    const V = this.V; const b = s.bounds; const cx = (b.x0 + b.x1 + 1) * V / 2; const y = b.y0 * V + 1.6;
     // Stand in front of the lower-z face, slightly off-axis so faces read in perspective.
-    this.cam(cx + 1.5, y + 0.4, b.z0 * .5 - offset, cx, y + 0.6, b.z0 * .5 + 1);
+    this.cam(cx + 1.5, y + 0.4, b.z0 * V - offset, cx, y + 0.6, b.z0 * V + 1);
     return true;
   },
   async meshed() { const g = window.__vw; for (let i = 0; i < 300; i++) { if (g.chunks.idle) return; await new Promise(r => setTimeout(r, 50)); } },
   wreck(name, nth, radius, power, count) {
-    const g = window.__vw; const s = this.struct(name, nth); const b = s.bounds;
-    for (let k = 0; k < count; k++) g.destruction.applyDamage({ x: b.x0 * .5 + 2 + k * ((b.x1 - b.x0) * .5 - 4) / Math.max(1, count - 1), y: (b.y0 + 3) * .5, z: b.z0 * .5 + 1 }, radius, power, 'gallery');
+    const V = this.V; const g = window.__vw; const s = this.struct(name, nth); const b = s.bounds;
+    for (let k = 0; k < count; k++) g.destruction.applyDamage({ x: b.x0 * V + 2 + k * ((b.x1 - b.x0) * V - 4) / Math.max(1, count - 1), y: b.y0 * V + 1.5, z: b.z0 * V + 1 }, radius, power, 'gallery');
   }
 };`;
 
@@ -111,8 +113,8 @@ for (const [slot, id] of [[0, 'pickaxe'], [1, 'bat'], [2, 'pistol'], [3, 'shotgu
 await run(`window.__vw.weapons.select(2);`);
 // Armed C4 on a wall
 await run(`
-  const g = window.__vw; const s = window.__gal.struct('Office Block'); const b = s.bounds;
-  g.player.position.set((b.x0 + b.x1 + 1) * .25, b.y0 * .5, b.z0 * .5 - 2.2); g.player.yaw = Math.PI; g.player.pitch = -0.05; g.player.updateCamera();
+  const g = window.__vw; const V = window.__gal.V; const s = window.__gal.struct('Office Block'); const b = s.bounds;
+  g.player.position.set((b.x0 + b.x1 + 1) * V / 2, b.y0 * V, b.z0 * V - 2.2); g.player.yaw = Math.PI; g.player.pitch = -0.05; g.player.updateCamera();
   g.weapons.select(7); for (let i = 0; i < 3; i++) { g.weapons.active.cooldown = 0; g.player.yaw = Math.PI + (i - 1) * 0.35; g.player.updateCamera(); g.weapons.fire(g.weapons.active); }
   g.player.yaw = Math.PI; g.player.updateCamera();`);
 await wait(500);
@@ -126,9 +128,9 @@ await wait(500);
 await shot('hud-structure-readout', 'After the hits: structure readout bar, score ticked up, debris settled against the wall.', 'Readout legibility, score bar fill toward the next milestone, debris at rest.');
 // Chain reaction + combo + callout
 await run(`
-  const g = window.__vw; const s = window.__gal.struct('Convenience Store'); const b = s.bounds;
-  g.player.position.set((b.x0 + b.x1 + 1) * .25 - 6, b.y0 * .5, b.z0 * .5 - 14); g.player.yaw = Math.PI - 0.35; g.player.pitch = 0.05; g.player.updateCamera();
-  g.destruction.applyDamage({ x: b.x0 * .5 + 1.5, y: (b.y0 + 1) * .5, z: b.z0 * .5 + 1.5 }, 3, 60, 'gallery');`);
+  const g = window.__vw; const V = window.__gal.V; const s = window.__gal.struct('Convenience Store'); const b = s.bounds;
+  g.player.position.set((b.x0 + b.x1 + 1) * V / 2 - 6, b.y0 * V, b.z0 * V - 14); g.player.yaw = Math.PI - 0.35; g.player.pitch = 0.05; g.player.updateCamera();
+  g.destruction.applyDamage({ x: b.x0 * V + 1.5, y: b.y0 * V + 0.5, z: b.z0 * V + 1.5 }, 3, 60, 'gallery');`);
 await wait(420);
 await shot('action-chain-reaction', 'Propane cage outside the convenience store going up: chained detonations in flight.', 'Flash/particle look, combo badge on the score bar, two-tone propane bottles.');
 await wait(1600);
@@ -190,10 +192,12 @@ const THEMES = {
   downtown: ['Convenience Store', 'Office Block', 'Parking Structure', 'Bus Shelter'],
   park: ['Monument', 'Fountain', 'Gazebo', 'Statue', 'Maintenance Shed']
 };
-const AERIAL = { desert: [64, 52, -18, 64, 14, 70], downtown: [64, 60, -20, 64, 12, 70], park: [64, 56, -20, 64, 14, 70] };
+// Aerial: above the spawn edge looking across the arena; heights relative to the arena size.
+const AERIAL = { desert: [0.4, -0.14], downtown: [0.47, -0.16], park: [0.44, -0.16] };
 for (const [theme, names] of Object.entries(THEMES)) {
   await load(`theme=${theme}&seed=1234&screen=menu`);
-  await run(`window.__gal.free(); window.__gal.cam(${AERIAL[theme].join(',')});`);
+  const [hy, hz] = AERIAL[theme];
+  await run(`const W = window.__gal.W; const g = window.__vw.world.spawn.y; window.__gal.free(); window.__gal.cam(W.x / 2, g + W.x * ${hy}, W.z * ${hz}, W.x / 2, g, W.z * 0.55);`);
   await wait(1800);
   await shot(`arena-${theme}-aerial`, `${theme}: whole arena from above the spawn edge, seed 1234.`, 'Placement logic (roadside / blocks / paths), terrain stepping, overall palette.');
   for (const name of names) {
@@ -250,10 +254,10 @@ await wait(2200);
 await shot('action-crater-terrain', 'A C4 crater dug into the sand next to the spawn pad.', 'Carved terrain faces, debris resting inside the crater.');
 await load('theme=downtown&seed=1234&screen=hud');
 await run(`
-  const g = window.__vw; const s = window.__gal.struct('Office Block'); const b = s.bounds;
-  g.player.position.set((b.x0 + b.x1 + 1) * .25 + 12, b.y0 * .5, b.z0 * .5 - 24); g.player.yaw = Math.PI + 0.35; g.player.pitch = 0.28; g.player.updateCamera();
-  const y = (b.y0 + 2) * .5;
-  for (let x = b.x0 * .5 + 1; x <= b.x1 * .5; x += 3) for (let z = b.z0 * .5 + 1; z <= b.z1 * .5; z += 3) g.destruction.applyDamage({ x, y, z }, 3, 90, 'gallery');`);
+  const g = window.__vw; const V = window.__gal.V; const s = window.__gal.struct('Office Block'); const b = s.bounds;
+  g.player.position.set((b.x0 + b.x1 + 1) * V / 2 + 12, b.y0 * V, b.z0 * V - 24); g.player.yaw = Math.PI + 0.35; g.player.pitch = 0.28; g.player.updateCamera();
+  const y = b.y0 * V + 1;
+  for (let x = b.x0 * V + 1; x <= b.x1 * V; x += 3) for (let z = b.z0 * V + 1; z <= b.z1 * V; z += 3) g.destruction.applyDamage({ x, y, z }, 3, 90, 'gallery');`);
 await wait(900);
 await shot('action-collapse-start', 'Office block with its ground floor blown out: upper floors letting go.', 'Does the cut read? Body tilt, debris, callouts stacking.');
 await wait(1500);

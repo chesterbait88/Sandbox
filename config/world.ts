@@ -54,3 +54,11 @@ export const TERRAIN = {
   /** Structure pad clearance around a footprint (m). */
   padMarginM: 2
 } as const;
+
+/** Menu backdrop camera: orbit around the arena centre. */
+export const MENU_CAMERA = {
+  orbitSpeed: 0.08,
+  radiusM: 70,
+  heightM: 26,
+  lookDownM: -4
+} as const;

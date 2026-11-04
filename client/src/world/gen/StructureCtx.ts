@@ -1,4 +1,4 @@
-import { MATERIALS, WORLD_VOXELS } from '@vw/config';
+import { MATERIALS, VOXEL_SIZE, WORLD_VOXELS } from '@vw/config';
 
 const SX = WORLD_VOXELS.x;
 const SY = WORLD_VOXELS.y;
@@ -33,7 +33,7 @@ export class StructureCtx {
 
   /** Helper: metres to voxels. */
   m(v: number): number {
-    return Math.round(v * 2);
+    return Math.round(v / VOXEL_SIZE);
   }
 
   set(x: number, y: number, z: number, m: number): void {
@@ -124,7 +124,8 @@ export class StructureCtx {
 
   /** Centre of everything placed, in metres. */
   center(): { x: number; y: number; z: number } {
-    if (this.voxels === 0) return { x: this.origin.x * 0.5, y: this.origin.y * 0.5, z: this.origin.z * 0.5 };
-    return { x: ((this.minX + this.maxX + 1) / 2) * 0.5, y: ((this.minY + this.maxY + 1) / 2) * 0.5, z: ((this.minZ + this.maxZ + 1) / 2) * 0.5 };
+    const v = VOXEL_SIZE;
+    if (this.voxels === 0) return { x: this.origin.x * v, y: this.origin.y * v, z: this.origin.z * v };
+    return { x: ((this.minX + this.maxX + 1) / 2) * v, y: ((this.minY + this.maxY + 1) / 2) * v, z: ((this.minZ + this.maxZ + 1) / 2) * v };
   }
 }
