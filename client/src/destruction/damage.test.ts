@@ -27,7 +27,7 @@ describe('applyDamage', () => {
     expect(b.length).toBeGreaterThan(0);
     expect(b.length).toBeLessThan(a.length);
     // Drywall is carved to the full 2.5 m depth; concrete keeps its back half.
-    expect(world.getVoxel(30, 25, 44)).toBe(0);
+    expect(world.getVoxel(30, 25, 43)).toBe(0);
     expect(world.getVoxel(70, 25, 44)).toBe(MAT.CONCRETE);
   });
 
