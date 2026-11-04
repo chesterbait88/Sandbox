@@ -15,6 +15,8 @@ const SX = WORLD_VOXELS.x;
 const SY = WORLD_VOXELS.y;
 const SZ = WORLD_VOXELS.z;
 const idx = (x: number, y: number, z: number) => x + SX * (z + SZ * y);
+/** Metres to voxels. */
+const v = (metres: number) => Math.round(metres / VOXEL_SIZE);
 
 interface Rect {
   x0: number;
@@ -85,7 +87,7 @@ function reserved(theme: ThemeId): Rect[] {
   const sz = Math.round(PLACEMENT.spawnEdgeM / VOXEL_SIZE);
   list.push({ x0: SX / 2 - pad, z0: 0, x1: SX / 2 + pad, z1: sz + pad });
   if (theme === 'desert') {
-    const half = ROAD.halfWidth + ROAD.shoulder;
+    const half = v(ROAD.halfWidthM + ROAD.shoulderM);
     list.push({ x0: 0, z0: SZ / 2 - half, x1: SX - 1, z1: SZ / 2 + half });
   }
   return list;
@@ -93,9 +95,10 @@ function reserved(theme: ThemeId): Rect[] {
 
 /** Downtown blocks: the lots between sidewalk rings. */
 function cityBlocks(): Rect[] {
-  const inner = CITY.streetHalf + CITY.sidewalk;
+  const inner = v(CITY.streetHalfM + CITY.sidewalkM);
+  const pitch = v(CITY.pitchM);
   const list: Rect[] = [];
-  for (let gx = 0; gx < SX; gx += CITY.pitch) for (let gz = 0; gz < SZ; gz += CITY.pitch) list.push({ x0: gx + inner, z0: gz + inner, x1: gx + CITY.pitch - inner - 1, z1: gz + CITY.pitch - inner - 1 });
+  for (let gx = 0; gx < SX; gx += pitch) for (let gz = 0; gz < SZ; gz += pitch) list.push({ x0: gx + inner, z0: gz + inner, x1: gx + pitch - inner - 1, z1: gz + pitch - inner - 1 });
   return list;
 }
 
@@ -117,10 +120,10 @@ function candidates(
   switch (kind) {
     case 'roadside': {
       if (theme !== 'desert') break;
-      const edge = ROAD.halfWidth + ROAD.shoulder;
+      const edge = v(ROAD.halfWidthM + ROAD.shoulderM);
       for (let i = 0; i < 12; i++) {
         const south = rng() < 0.5;
-        const setback = randInt(rng, ROAD.setback[0], ROAD.setback[1]);
+        const setback = randInt(rng, v(ROAD.setbackM[0]), v(ROAD.setbackM[1]));
         const x0 = rx(margin, SX - margin - fp.x);
         if (south) out.push({ x0, z0: SZ / 2 - edge - setback - fp.z, mirror: true });
         else out.push({ x0, z0: SZ / 2 + edge + setback, mirror: false });
@@ -136,20 +139,23 @@ function candidates(
         if (fp.x > bw || fp.z > bd) continue;
         const x0 = b.x0 + rx(0, bw - fp.x + 1);
         // Front toward the nearer street: low-z edge, or high-z edge mirrored.
-        if (rng() < 0.5) out.push({ x0, z0: b.z0, mirror: false, margin: 2 });
-        else out.push({ x0, z0: b.z1 - fp.z + 1, mirror: true, margin: 2 });
+        if (rng() < 0.5) out.push({ x0, z0: b.z0, mirror: false, margin: v(1) });
+        else out.push({ x0, z0: b.z1 - fp.z + 1, mirror: true, margin: v(1) });
       }
       break;
     }
     case 'sidewalk': {
       if (theme !== 'downtown') break;
-      const inner = CITY.streetHalf + CITY.sidewalk;
+      const inner = v(CITY.streetHalfM + CITY.sidewalkM);
+      const pitch = v(CITY.pitchM);
+      const streetHalf = v(CITY.streetHalfM);
+      const kerb = v(CITY.kerbM);
       for (let i = 0; i < 16; i++) {
-        const gz = randInt(rng, 1, Math.floor(SZ / CITY.pitch) - 1) * CITY.pitch;
-        const gx = randInt(rng, 0, Math.floor(SX / CITY.pitch) - 1) * CITY.pitch;
-        const x0 = gx + inner + rx(0, CITY.pitch - 2 * inner - fp.x);
-        if (rng() < 0.5) out.push({ x0, z0: gz + CITY.streetHalf, mirror: false, gap: 2, margin: 2 });
-        else out.push({ x0, z0: gz - CITY.streetHalf - fp.z, mirror: true, gap: 2, margin: 2 });
+        const gz = randInt(rng, 1, Math.floor(SZ / pitch) - 1) * pitch;
+        const gx = randInt(rng, 0, Math.floor(SX / pitch) - 1) * pitch;
+        const x0 = gx + inner + rx(0, pitch - 2 * inner - fp.x);
+        if (rng() < 0.5) out.push({ x0, z0: gz + streetHalf + kerb, mirror: false, gap: v(1), margin: v(1) });
+        else out.push({ x0, z0: gz - streetHalf - kerb - fp.z, mirror: true, gap: v(1), margin: v(1) });
       }
       break;
     }
@@ -157,7 +163,7 @@ function candidates(
       const hosts = placed.filter((p) => !near || near.includes(p.id));
       const pool = hosts.length ? hosts : placed;
       for (const host of pool.slice().sort(() => rng() - 0.5)) {
-        const g = SITING.besideGap;
+        const g = v(SITING.besideGapM);
         const z0 = host.rect.z0 + rx(0, Math.max(1, host.rect.z1 - host.rect.z0 - fp.z));
         out.push({ x0: host.rect.x1 + 1 + g, z0, mirror: false, gap: 0 });
         out.push({ x0: host.rect.x0 - g - fp.x, z0, mirror: false, gap: 0 });
@@ -185,12 +191,13 @@ function candidates(
       break;
     }
     case 'center': {
-      for (let i = 0; i < 10; i++) out.push({ x0: SX / 2 - (fp.x >> 1) + randInt(rng, -SITING.centerJitter, SITING.centerJitter), z0: SZ / 2 - (fp.z >> 1) + randInt(rng, -SITING.centerJitter, SITING.centerJitter), mirror: false });
+      const cj = v(SITING.centerJitterM);
+      for (let i = 0; i < 10; i++) out.push({ x0: SX / 2 - (fp.x >> 1) + randInt(rng, -cj, cj), z0: SZ / 2 - (fp.z >> 1) + randInt(rng, -cj, cj), mirror: false });
       break;
     }
     case 'edge': {
       for (let i = 0; i < 12; i++) {
-        const d = randInt(rng, SITING.edgeDepth[0], SITING.edgeDepth[1]);
+        const d = randInt(rng, v(SITING.edgeDepthM[0]), v(SITING.edgeDepthM[1]));
         const side = randInt(rng, 0, 2); // never the spawn side
         if (side === 0) out.push({ x0: margin + d, z0: rx(margin, SZ - margin - fp.z), mirror: false });
         else if (side === 1) out.push({ x0: SX - margin - d - fp.x, z0: rx(margin, SZ - margin - fp.z), mirror: false });
@@ -234,13 +241,11 @@ export function placeStructures(theme: ThemeId, rng: Rng, mat: Uint8Array, owner
       const j = Math.floor(rng() * (i + 1));
       [cells[i], cells[j]] = [cells[j], cells[i]];
     }
-    // Hosts first so 'beside' structures have something to lean on.
-    const order = def.pool.slice().sort((a, b) => (RECIPES[a].siting.kind === 'beside' ? 1 : 0) - (RECIPES[b].siting.kind === 'beside' ? 1 : 0));
     let id = 1;
-    for (let n = 0; n < count; n++) {
-      const recipe: Recipe | undefined = RECIPES[order[n % order.length]];
-      if (!recipe) continue;
+    const place = (recipe: Recipe, isProp: boolean): boolean => {
       const fp = recipe.footprint(rng);
+      const myGap = isProp ? v(PLACEMENT.propGapM) : gap;
+      const myPad = isProp ? 0 : padMargin;
       const spots = candidates(recipe.siting.kind, recipe.siting.near, theme, fp, rng, height, mat, placed, cells, margin);
       let chosen: Spot | null = null;
       let rect: Rect | null = null;
@@ -248,24 +253,38 @@ export function placeStructures(theme: ThemeId, rng: Rng, mat: Uint8Array, owner
         const m = sp.margin ?? margin;
         const r: Rect = { x0: sp.x0, z0: sp.z0, x1: sp.x0 + fp.x - 1, z1: sp.z0 + fp.z - 1 };
         if (r.x0 < m || r.z0 < m || r.x1 >= SX - m || r.z1 >= SZ - m) continue;
-        const g = sp.gap ?? gap;
+        const g = Math.min(sp.gap ?? myGap, myGap);
         // The spawn pad keeps the full gap; the road only needs the setback; other structures use the spot's gap.
         if (taken.some((t, ti) => overlaps(r, t, ti === 0 ? gap : ti < reservedCount ? 0 : g))) continue;
         chosen = sp;
         rect = r;
         break;
       }
-      if (!chosen || !rect) continue;
-      const padRect: Rect = { x0: rect.x0 - padMargin, z0: rect.z0 - padMargin, x1: rect.x1 + padMargin, z1: rect.z1 + padMargin };
+      if (!chosen || !rect) return false;
+      const padRect: Rect = { x0: rect.x0 - myPad, z0: rect.z0 - myPad, x1: rect.x1 + myPad, z1: rect.z1 + myPad };
       const h = Math.min(SY - fp.y - 2, padHeight(height, padRect));
       stampPad(theme, mat, height, padRect, h);
       const ctx = new StructureCtx(mat, owner, id, { x: rect.x0, y: h + 1, z: rect.z0 }, fp.z, chosen.mirror);
       recipe.build(ctx, rng, fp);
-      structures.push({ id, name: recipe.name, totalValue: Math.round(ctx.totalValue), center: ctx.center(), voxels: ctx.voxels, bounds: ctx.bounds() });
+      if (ctx.voxels === 0) return false;
+      structures.push({ id, name: recipe.name, prop: isProp || undefined, totalValue: Math.round(ctx.totalValue), center: ctx.center(), voxels: ctx.voxels, bounds: ctx.bounds() });
       taken.push(rect);
       placed.push({ id: recipe.id, rect });
       id++;
+      return true;
+    };
+    // Hosts first so 'beside' structures have something to lean on.
+    const order = def.pool.slice().sort((a, b) => (RECIPES[a].siting.kind === 'beside' ? 1 : 0) - (RECIPES[b].siting.kind === 'beside' ? 1 : 0));
+    for (let n = 0; n < count; n++) {
+      const recipe: Recipe | undefined = RECIPES[order[n % order.length]];
+      if (recipe) place(recipe, false);
       if ((n + 1) % order.length === 0) order.sort(() => rng() - 0.5);
+    }
+    // Scenery props: small, many, placed in the leftover space.
+    const props = def.props.filter((p) => RECIPES[p]);
+    if (props.length) {
+      const pc = randInt(rng, def.propCount[0], def.propCount[1]);
+      for (let n = 0; n < pc; n++) place(RECIPES[props[Math.floor(rng() * props.length)]], true);
     }
   }
 

@@ -3,7 +3,7 @@ export const DEBRIS = {
   perBlast: 24,
   /** Global live cap. */
   cap: 300,
-  sizeM: 0.5,
+  sizeM: 0.3,
   lifetimeS: 4,
   shrinkS: 0.5,
   impulseScale: 0.3,
@@ -66,9 +66,9 @@ export const PHYSICS = {
 /** Structural collapse: unsupported clusters of a structure fall as one rigid body. */
 export const COLLAPSE = {
   /** Clusters smaller than this are simply deleted (they would be debris-sized). */
-  minBodyVoxels: 6,
+  minBodyVoxels: 48,
   /** Larger clusters are deleted without a body (meshing them would stall the frame). */
-  maxBodyVoxels: 60000,
+  maxBodyVoxels: 480000,
   maxBodies: 10,
   lifetimeS: 12,
   shrinkS: 1,

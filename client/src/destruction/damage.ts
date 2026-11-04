@@ -87,16 +87,26 @@ export class Destruction {
     const owner = world.owner;
     const dedupe = VOLATILE.dedupeRadiusM;
 
+    const rv2 = rv * rv;
     for (let y = y0; y <= y1; y++) {
+      const dy = y + 0.5 - cy;
+      const dy2 = dy * dy;
+      if (dy2 > rv2) continue;
       for (let z = z0; z <= z1; z++) {
-        for (let x = x0; x <= x1; x++) {
-          const i = voxelIndex(x, y, z);
+        const dz = z + 0.5 - cz;
+        const rem = rv2 - dy2 - dz * dz;
+        if (rem < 0) continue;
+        // Only the x span inside the sphere on this row.
+        const half = Math.sqrt(rem);
+        const xs = Math.max(x0, Math.floor(cx - half - 0.5));
+        const xe = Math.min(x1, Math.ceil(cx + half - 0.5));
+        const rowBase = voxelIndex(0, y, z);
+        for (let x = xs; x <= xe; x++) {
+          const i = rowBase + x;
           const m = mat[i];
           if (m === 0) continue;
           const dx = x + 0.5 - cx;
-          const dy = y + 0.5 - cy;
-          const dz = z + 0.5 - cz;
-          const d = Math.sqrt(dx * dx + dy * dy + dz * dz) * VOXEL_SIZE;
+          const d = Math.sqrt(dx * dx + dy2 + dz * dz) * VOXEL_SIZE;
           if (d > radius) continue;
           const energy = power * (1 - d / radius);
           if (!(shattersOf[m] && energy > 0) && energy < hardnessOf[m]) continue;

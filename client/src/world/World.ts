@@ -27,6 +27,8 @@ export interface RayHit {
 export interface StructureInfo {
   id: number;
   name: string;
+  /** Scenery prop (see Recipe.prop): scores, but is not a structure for the leveled count. */
+  prop?: boolean;
   totalValue: number;
   /** Centre of the structure in metres. */
   center: Vec3;

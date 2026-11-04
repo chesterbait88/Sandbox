@@ -1,5 +1,9 @@
+import { VOXEL_SIZE } from '@vw/config';
 import type { Rng } from '../../../util/rng';
 import type { StructureCtx } from '../StructureCtx';
+
+/** Metres to voxels (rounded, at least 1 when the input is positive). Recipes author in metres. */
+export const m = (metres: number): number => (metres > 0 ? Math.max(1, Math.round(metres / VOXEL_SIZE)) : Math.round(metres / VOXEL_SIZE));
 
 export interface Footprint {
   /** Size in voxels. */
@@ -33,6 +37,9 @@ export interface Recipe {
   id: string;
   name: string;
   siting: Siting;
+  /** Scenery: placed from the theme's props pool after the structures, with a small gap and no pad
+   *  margin; never counted as a leveled structure. */
+  prop?: boolean;
   /** Pick random dimensions; the placer flattens a pad this big. */
   footprint(rng: Rng): Footprint;
   /** Draw into the pad. Local x in [0, fp.x), z in [0, fp.z), y ≥ 0. */

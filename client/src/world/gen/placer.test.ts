@@ -26,8 +26,9 @@ describe('placer', () => {
       const a = gen(theme, 'TEST1');
       const b = gen(theme, 'TEST1');
       const c = gen(theme, 'TEST2');
-      expect(a.placed.structures.length).toBeGreaterThanOrEqual(6);
-      expect(a.placed.structures.length).toBeLessThanOrEqual(10);
+      const real = a.placed.structures.filter((s) => !s.prop);
+      expect(real.length).toBeGreaterThanOrEqual(6);
+      expect(real.length).toBeLessThanOrEqual(10);
       for (const s of a.placed.structures) expect(s.totalValue).toBeGreaterThan(0);
       expect(hash(a.mat)).toBe(hash(b.mat));
       expect(hash(a.mat)).not.toBe(hash(c.mat));

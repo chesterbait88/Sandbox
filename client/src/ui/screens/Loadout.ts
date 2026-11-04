@@ -14,7 +14,7 @@ export class LoadoutScreen extends Screen {
   private budget: HTMLElement;
   private stickyBtn: HTMLButtonElement;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10);
+  private camera = new THREE.PerspectiveCamera(VIEW_MODEL.showcase.fov, 1, 0.01, 10);
   private arena: HTMLElement;
   private t = 0;
 
@@ -40,7 +40,7 @@ export class LoadoutScreen extends Screen {
     const dl = new THREE.DirectionalLight('#ffffff', 1.6);
     dl.position.set(1, 2, 2);
     this.scene.add(dl);
-    this.camera.position.set(0, 0.16, 0.72);
+    this.camera.position.set(VIEW_MODEL.showcase.x, VIEW_MODEL.showcase.y, VIEW_MODEL.showcase.z);
     this.camera.lookAt(0, 0, 0);
     for (const w of WEAPONS) {
       const slot = h('div', 'slot');

@@ -90,7 +90,7 @@ export class Score {
       events.emit('structureDamaged', { id: e.info.id, name: e.info.name, percent: Math.min(1, percent), value: Math.round(e.destroyedValue), totalValue: e.info.totalValue, destroyedValue: e.destroyedValue });
       if (!e.leveled && percent >= SCORING.leveledThreshold) {
         e.leveled = true;
-        this.structuresLeveled++;
+        if (!e.info.prop) this.structuresLeveled++;
         const bonus = Math.round(e.info.totalValue * SCORING.leveledBonus);
         delta += bonus;
         events.emit('structureLeveled', { id: e.info.id, name: e.info.name, bonus, totalValue: e.info.totalValue });

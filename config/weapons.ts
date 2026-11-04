@@ -93,7 +93,9 @@ export const VIEW_MODEL = {
   recoilRecovery: 12,
   muzzleFlashMs: 60,
   /** Hands: two skin blocks either side of the grip. */
-  handMat: 18
+  handMat: 18,
+  /** Loadout screen showcase camera (m from the model centre) and its vertical FOV. */
+  showcase: { x: 0, y: 0.16, z: 0.72, fov: 42 }
 } as const;
 
 /** Small voxel models for things that leave the player's hands. */

@@ -1,3 +1,4 @@
+import { VOXEL_SIZE } from '@vw/config';
 import { describe, expect, it } from 'vitest';
 import { World } from './World';
 
@@ -15,13 +16,14 @@ describe('World', () => {
   it('raycast hits the first solid voxel and reports the entry face', () => {
     const w = new World();
     for (let x = 0; x < 20; x++) for (let z = 0; z < 20; z++) w.setVoxel(x, 10, z, 14);
-    const hit = w.raycast({ x: 5, y: 10, z: 5 }, { x: 0, y: -1, z: 0 }, 50);
+    const o = { x: 5 * VOXEL_SIZE, y: 10, z: 5 * VOXEL_SIZE };
+    const hit = w.raycast(o, { x: 0, y: -1, z: 0 }, 50);
     expect(hit).not.toBeNull();
     expect(hit!.y).toBe(10);
     expect(hit!.face.y).toBe(1);
     expect(hit!.mat).toBe(14);
-    expect(hit!.dist).toBeCloseTo(10 - 5.5, 3);
-    expect(w.raycast({ x: 5, y: 10, z: 5 }, { x: 0, y: 1, z: 0 }, 50)).toBeNull();
+    expect(hit!.dist).toBeCloseTo(10 - 11 * VOXEL_SIZE, 3);
+    expect(w.raycast(o, { x: 0, y: 1, z: 0 }, 50)).toBeNull();
   });
 
   it('copyPadded includes neighbour voxels in the border', () => {

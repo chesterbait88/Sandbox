@@ -1,6 +1,6 @@
 /** World dimensions and voxel scale. All units in metres unless noted. */
-export const VOXEL_SIZE = 0.5;
-export const WORLD_SIZE_M = { x: 128, y: 64, z: 128 } as const;
+export const VOXEL_SIZE = 0.25;
+export const WORLD_SIZE_M = { x: 96, y: 40, z: 96 } as const;
 export const CHUNK_SIZE = 32;
 export const WORLD_VOXELS = {
   x: WORLD_SIZE_M.x / VOXEL_SIZE,
@@ -52,8 +52,8 @@ export const RENDER = {
 
 /** Terrain generation shared parameters */
 export const TERRAIN = {
-  /** Base ground level as a fraction of world height. */
-  baseLevelM: 16,
+  /** Base ground level (m). */
+  baseLevelM: 8,
   /** Below this depth from the surface the strata becomes stone. */
   stoneDepthM: 4,
   /** Structure pad clearance around a footprint (m). */

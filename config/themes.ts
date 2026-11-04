@@ -13,6 +13,9 @@ export interface ThemeDef {
   strata: [number, number][];
   /** Structure recipe ids in the pool. */
   pool: string[];
+  /** Scenery recipes (prop: true): placed after the structures, low value, not counted as leveled. */
+  props: string[];
+  propCount: [number, number];
   /** How many structures to place. */
   structureCount: [number, number];
   /** Min gap between structure footprints (m). */
@@ -40,8 +43,10 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
       [4, 99]
     ],
     pool: ['gasStation', 'diner', 'billboard', 'waterTower', 'propaneCage'],
+    props: ['cactus', 'rock', 'car', 'roadSign'],
+    propCount: [10, 16],
     structureCount: [6, 9],
-    minGapM: 10,
+    minGapM: 6,
     sky: '#ffb36b',
     horizon: '#ffe3b0',
     fog: '#f0c995',
@@ -62,8 +67,10 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
       [4, 99]
     ],
     pool: ['convenienceStore', 'officeBlock', 'parkingStructure', 'busShelter', 'propaneCage'],
+    props: ['lampPost', 'car', 'dumpster', 'hydrant'],
+    propCount: [12, 18],
     structureCount: [7, 10],
-    minGapM: 10,
+    minGapM: 6,
     sky: '#6a8fc9',
     horizon: '#c9d9ef',
     fog: '#b8c6da',
@@ -84,8 +91,10 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
       [4, 99]
     ],
     pool: ['monument', 'fountain', 'gazebo', 'statue', 'shed'],
+    props: ['tree', 'bench', 'lampPost', 'rock'],
+    propCount: [14, 22],
     structureCount: [6, 9],
-    minGapM: 10,
+    minGapM: 6,
     sky: '#7fb8ff',
     horizon: '#e4f0ff',
     fog: '#cfe2f3',
@@ -107,29 +116,40 @@ export const PLACEMENT = {
   /** Max placement attempts per structure. */
   maxAttempts: 40,
   /** Grid cell size for jittered placement (m). */
-  gridCellM: 36
+  gridCellM: 24,
+  /** Props keep this gap (m) from anything else and get no flattened pad margin. */
+  propGapM: 1
 } as const;
 
-/** Downtown street grid, in voxels. Blocks are pitch − 2·(streetHalf + sidewalk) wide. */
+/** Downtown street grid, in metres. Blocks are pitch − 2·(streetHalf + sidewalk) wide. */
 export const CITY = {
-  pitch: 64,
-  streetHalf: 8,
-  sidewalk: 4
+  pitchM: 32,
+  streetHalfM: 4,
+  sidewalkM: 2,
+  /** Kerb strip width and the dashed centre line (dash length, gap) on each street. */
+  kerbM: 0.25,
+  laneDashM: 2,
+  laneGapM: 2,
+  laneWidthM: 0.25
 } as const;
 
-/** Desert road, in voxels: half width of the asphalt and the shoulder that blends into the dunes. */
+/** Desert road, in metres: half width of the asphalt and the shoulder that blends into the dunes. */
 export const ROAD = {
-  halfWidth: 12,
-  shoulder: 6,
+  halfWidthM: 5,
+  shoulderM: 3,
   /** Buildings sit this far (min, max) beyond the shoulder. */
-  setback: [2, 8] as [number, number]
+  setbackM: [1, 4] as [number, number],
+  /** Centre line: two yellow stripes this wide, this far apart; white edge lines this far in from the edge. */
+  centreLineM: 0.25,
+  centreGapM: 0.25,
+  edgeLineInsetM: 0.5
 } as const;
 
 /** Siting tuning. */
 export const SITING = {
   hillSamples: 24,
   pathSamples: 60,
-  centerJitter: 16,
-  edgeDepth: [4, 20] as [number, number],
-  besideGap: 2
+  centerJitterM: 8,
+  edgeDepthM: [2, 10] as [number, number],
+  besideGapM: 1
 } as const;

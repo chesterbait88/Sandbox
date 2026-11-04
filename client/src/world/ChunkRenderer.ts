@@ -7,6 +7,14 @@ import { buildGeometry, createOpaqueMaterial, createTransparentMaterial } from '
 
 const PADDED = (CHUNK_SIZE + 2) ** 3;
 
+/** True when every voxel equals the first and that material is air or opaque (no faces possible). */
+function isUniformOpaque(vox: Uint8Array): boolean {
+  const m = vox[0];
+  if (m !== 0 && World.transparent[m] === 1) return false;
+  for (let i = 1; i < vox.length; i++) if (vox[i] !== m) return false;
+  return true;
+}
+
 /**
  * Owns the chunk meshes and the mesher Worker pool. Dirty chunks are remeshed nearest-first,
  * `RENDER.remeshPerFrame` per frame (or `burst` of them when loading a world).
@@ -89,8 +97,17 @@ export class ChunkRenderer {
     const vox = this.pool.pop() ?? new Uint8Array(PADDED);
     this.world.copyPadded(c.index, vox);
     this.world.dirty[c.index] = 0;
-    c.pending = true;
     c.version++;
+    // A chunk that is all air, or solid opaque right through its padding, has no faces: skip the worker.
+    if (isUniformOpaque(vox)) {
+      this.pool.push(vox);
+      c.pending = false;
+      this.disposeChunk(c);
+      c.empty = true;
+      this.stats.meshed++;
+      return;
+    }
+    c.pending = true;
     const msg: MeshRequest = { type: 'mesh', index: c.index, version: c.version, cx: c.cx, cy: c.cy, cz: c.cz, vox };
     const w = this.workers[this.rr++ % this.workers.length];
     w.postMessage(msg, [vox.buffer as ArrayBuffer]);

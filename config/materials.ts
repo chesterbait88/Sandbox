@@ -42,7 +42,22 @@ export const MATERIALS: Record<number, Material> = {
   17: { id: 17, name: 'Neon', color: '#ff3fa4', value: 2, hardness: 1, emissive: true },
   20: { id: 20, name: 'Fuel tank', color: '#ff2e3b', value: 4, hardness: 2, pattern: 'stripes', color2: '#ffd400', volatile: { power: 60, radius: 5 } },
   21: { id: 21, name: 'Propane', color: '#f4fff8', value: 3, hardness: 1, pattern: 'band', color2: '#19d3a0', volatile: { power: 35, radius: 3 } },
-  22: { id: 22, name: 'Transformer', color: '#5a46e0', value: 5, hardness: 3, pattern: 'band', color2: '#ffd400', volatile: { power: 25, radius: 2.5 } }
+  22: { id: 22, name: 'Transformer', color: '#5a46e0', value: 5, hardness: 3, pattern: 'band', color2: '#ffd400', volatile: { power: 25, radius: 2.5 } },
+  // Props and scenery.
+  23: { id: 23, name: 'Leaves', color: '#3fae4e', value: 1, hardness: 1 },
+  24: { id: 24, name: 'Bark', color: '#6b4a2b', value: 1, hardness: 2, pattern: 'siding' },
+  25: { id: 25, name: 'Rubber', color: '#23242b', value: 1, hardness: 2 },
+  26: { id: 26, name: 'Enamel red', color: '#e8342a', value: 3, hardness: 3 },
+  27: { id: 27, name: 'Enamel white', color: '#f2f3f5', value: 3, hardness: 3 },
+  28: { id: 28, name: 'Enamel teal', color: '#1fb8b0', value: 3, hardness: 3 },
+  // Terrain variety: worth nothing.
+  29: { id: 29, name: 'Rock', color: '#5f6470', value: 0, hardness: 4, terrain: true },
+  30: { id: 30, name: 'Dark sand', color: '#d9b45f', value: 0, hardness: 1, terrain: true },
+  31: { id: 31, name: 'Road paint', color: '#e9e6d6', value: 0, hardness: 2, terrain: true },
+  32: { id: 32, name: 'Lane paint', color: '#f0c419', value: 0, hardness: 2, terrain: true },
+  33: { id: 33, name: 'Kerb', color: '#e3dccb', value: 0, hardness: 3, terrain: true },
+  34: { id: 34, name: 'Dry grass', color: '#9cc24b', value: 0, hardness: 1, terrain: true },
+  35: { id: 35, name: 'Flowers', color: '#ff6fa8', value: 0, hardness: 1, terrain: true }
 };
 
 export const MAT = {
@@ -66,10 +81,23 @@ export const MAT = {
   PROPANE: 21,
   TRANSFORMER: 22,
   /** Downtown sidewalk: terrain-valued concrete look-alike. */
-  CONCRETE_SIDEWALK: 8
+  CONCRETE_SIDEWALK: 8,
+  LEAVES: 23,
+  BARK: 24,
+  RUBBER: 25,
+  ENAMEL_RED: 26,
+  ENAMEL_WHITE: 27,
+  ENAMEL_TEAL: 28,
+  ROCK: 29,
+  SAND_DARK: 30,
+  ROAD_PAINT: 31,
+  LANE_PAINT: 32,
+  KERB: 33,
+  DRY_GRASS: 34,
+  FLOWERS: 35
 } as const;
 
-export const MAX_MATERIAL_ID = 32;
+export const MAX_MATERIAL_ID = 40;
 
 /** Pattern tuning */
 export const PATTERNS = {
@@ -83,8 +111,9 @@ export const PATTERNS = {
 export const VOLATILE = {
   /** Delay between a tank being destroyed and its detonation (ms). */
   chainDelayMs: 150,
-  /** Only one detonation per this radius (m) of volatile voxels (tanks are up to 2 m long). */
-  dedupeRadiusM: 2
+  /** Only one detonation per this radius (m) of volatile voxels: a 1 × 1 × 2 m tank's far voxel
+   *  centres are 2.2 m apart at 0.25 m voxels. */
+  dedupeRadiusM: 2.5
 } as const;
 
 export function materialOf(id: number): Material | undefined {
