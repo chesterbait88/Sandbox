@@ -120,7 +120,7 @@ stateDiagram-v2
     end note
 ```
 
-Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock. Several milestones earned at once are announced one after another.
+Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock. Several milestones earned at once are announced one after another; after three, the rest just drop their rewards quietly.
 
 ## A dramatic moment: grenade through a brick wall
 
@@ -213,6 +213,7 @@ Mechanics from SPEC.md that do not exist for the player at this commit:
 
 ## Changelog
 
+- 2026-11-04: milestone bursts quiet after three callouts
 - 2026-11-04: debris settles into craters
 - 2026-11-04: Phase 7 — structural collapse, debris bouncing off walls, point-buy loadouts with their own board, sticky grenades, share links
 - 2026-11-04: Phase 6 — menu music, aim zoom, control hints, desktop-only notice, pointer-lock robustness

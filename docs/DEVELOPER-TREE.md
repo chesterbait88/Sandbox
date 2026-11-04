@@ -498,6 +498,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `start()`, `frame()` — the loop: look, move, weapons, chains, physics, debris, effects, view model, shake, chunks, render
   - `onFrame(fn)` — extra per-frame hooks
   - `stampTestWall()` — `?test=wall` harness: brick wall, fuel tank, propane, glass, concrete
+  - `stampSwatches()` — one 1 m cube per material plus a patterned wall, for the visual gallery
 - `client/src/render/Renderer.ts` **[main]**
   - `GameRenderer(canvas)` — WebGL2 renderer, camera, sun with shadow map, hemisphere light, overlay scene
   - `resize()` — fit the window
@@ -646,6 +647,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `isTheme(t)`, `maxScoreFor(theme)`
 - `scripts/screenshots.mjs` — Playwright capture of `?screen=` pages against the built server
 - `scripts/dev/probe.mjs` — headless probe that evaluates a script against `window.__vw`
+- `scripts/gallery.mjs` — the committed visual review gallery (`screenshots/gallery/`): drives screens, HUD states, action moments, every structure (3/4 + close-up), terrain, materials and weapons through `window.__gal` helpers (free camera, structure framing, terrain-relative standing)
+- `scripts/dev/e2e.mjs` — a full round through the DOM
 
 ## Built mechanics → implementing function
 
@@ -723,6 +726,7 @@ Everything in SPEC.md "Project structure" and "Build plan" now has code. Known g
 
 ## Changelog
 
+- 2026-11-04: visual review gallery script; HUD no longer intercepts clicks on the pause screen; milestone bursts go quiet after three
 - 2026-11-04: heightfield refresh after terrain carving
 - 2026-11-04: Phase 7 — Collapse, chunk trimesh colliders, meshArbitrary, point-buy loadout, sticky grenades, share links, mode column
 - 2026-11-04: Phase 6 — music loop, aim zoom, hints, notice, wall-clock UI timers

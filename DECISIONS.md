@@ -41,6 +41,7 @@
 - **Collapse meshing happens on the mesher worker** (`meshArbitrary`); the body starts falling immediately and the mesh pops in when it arrives (tens to hundreds of ms behind remeshes in the queue). One cluster is released per frame.
 - **Wall colliders only for chunks that hold structure voxels**, as trimeshes built from the opaque mesh (glass has none), one per frame. Terrain stays on the heightfield.
 - **Debris colliders are balls** (visual stays a cube): against trimeshes, cubes cost about twice as much on the insertion frame.
-- **Milestones drip** one per 0.6 s when several are earned at once (a collapse can add 30k points in one call); rewards follow the announcements.
+- **Milestones drip** one per 0.6 s when several are earned at once (a collapse can add 30k points in one call); after three loud callouts in a burst the rest grant quietly every 0.15 s, because thirty consecutive screen flashes washed the screen out for twenty seconds.
 - **Point-buy budget is 128**, exactly the cost of the fixed kit at the per-round prices in `config/loadout.ts`; the server signs the mode into the session token so a client cannot post a point-buy score to the fixed board.
 - **Share links use `?arena=theme-SEED`**; `?theme`/`?seed` remain debug parameters so screenshots and probes keep landing on the menu.
+- **Band pattern is odd rows** (was every fourth row): a 2-voxel propane bottle never showed its colour band. Found via the visual gallery.

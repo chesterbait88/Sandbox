@@ -10,6 +10,7 @@
     "typecheck": "pnpm -r typecheck",
     "screenshots": "node scripts/screenshots.mjs",
     "diagrams": "node scripts/check-diagrams.mjs",
+    "gallery": "node scripts/gallery.mjs",
     "start": "node server/dist/index.js"
   },
   "devDependencies": {

@@ -96,7 +96,8 @@ button, input { font-family: inherit; }
 .board .empty { padding: 20px; text-align: center; color: var(--muted); letter-spacing: 3px; }
 
 /* ---------- HUD ---------- */
-.hud { position: absolute; inset: 0; pointer-events: none; }
+#ui > .hud, .hud * { pointer-events: none; }
+.hud { position: absolute; inset: 0; }
 .hud.dim { opacity: .35; }
 .hud-score { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(820px, 70vw); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; background: var(--panel); border: 2px solid var(--line); padding: 8px 18px; clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
 .hud-score.flash { animation: barFlash .25s ease-out; }

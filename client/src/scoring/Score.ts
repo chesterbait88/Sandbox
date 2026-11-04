@@ -28,6 +28,9 @@ export class Score {
   /** Milestones earned but not yet announced; released one per MILESTONE_DRIP_S so callouts never stack. */
   private milestoneQueue = 0;
   private dripT = 0;
+  /** Loud callouts announced in the current burst (resets after a quiet spell). */
+  private loudInBurst = 0;
+  private sinceRelease = 0;
   /** Scoring stops when false (after the clock). */
   active = true;
   private entries = new Map<number, Entry>();
@@ -43,6 +46,8 @@ export class Score {
     this.nextMilestone = 0;
     this.milestoneQueue = 0;
     this.dripT = 0;
+    this.loudInBurst = 0;
+    this.sinceRelease = 0;
     this.active = true;
     this.entries.clear();
     this.arenaTotal = 0;
@@ -115,12 +120,17 @@ export class Score {
     const tier = milestoneFor(this.nextMilestone);
     this.nextMilestone++;
     this.milestoneQueue--;
-    this.dripT = SCORING.milestoneDripS;
-    events.emit('milestone', { index: this.nextMilestone, callout: tier.callout, reward: tier.reward as MilestoneReward, score: this.score });
+    const quiet = this.loudInBurst >= SCORING.milestoneLoudPerBurst;
+    if (!quiet) this.loudInBurst++;
+    this.dripT = quiet ? SCORING.milestoneQuietDripS : SCORING.milestoneDripS;
+    this.sinceRelease = 0;
+    events.emit('milestone', { index: this.nextMilestone, callout: tier.callout, reward: tier.reward as MilestoneReward, score: this.score, quiet });
   }
 
   update(dt: number): void {
     if (this.dripT > 0) this.dripT -= dt;
+    this.sinceRelease += dt;
+    if (this.sinceRelease > SCORING.milestoneBurstResetS) this.loudInBurst = 0;
     if (this.milestoneQueue > 0 && this.dripT <= 0) this.releaseMilestone();
     if (this.comboRemaining > 0) {
       this.comboRemaining -= dt;

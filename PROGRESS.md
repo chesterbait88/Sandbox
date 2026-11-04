@@ -1,5 +1,8 @@
 # Progress
 
+## Visual review gallery
+- `pnpm gallery` writes 74 JPEGs plus `INDEX.md` to `screenshots/gallery/` (committed): every screen and HUD state, each weapon in hand, action moments (C4, chain, rocket, crater, collapse), every structure from a 3/4 view and up close, theme aerials, terrain and material close-ups, the phone notice. Generating it caught two bugs: the HUD layer blocked clicks on the pause screen (CSS specificity) and a collapse's thirty milestones flashed the screen for twenty seconds (bursts now go quiet after three).
+
 ## Final state (end of run)
 
 **Works** (verified headless with Vitest, a DOM-driven end-to-end round and Playwright screenshots; see the phase sections below for details):

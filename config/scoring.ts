@@ -26,6 +26,11 @@ export const SCORING = {
   leaderboardCacheMs: 5000,
   /** Milestones earned in one burst are announced one per this many seconds. */
   milestoneDripS: 0.6,
+  /** After this many loud callouts in one burst, the rest grant their rewards quietly and quickly. */
+  milestoneLoudPerBurst: 3,
+  milestoneQuietDripS: 0.15,
+  /** A burst ends (loud callouts allowed again) after this long without a milestone. */
+  milestoneBurstResetS: 2.5,
   /** Countdown before the round starts (s). */
   countdownSeconds: 3
 } as const;

@@ -147,7 +147,7 @@ export class Game {
       this.score.onDetonation();
     });
     events.on('milestone', (m) => {
-      this.audio.stinger();
+      if (!m.quiet) this.audio.stinger();
       if (m.reward === 'grenade') this.weapons.grant('grenade', WEAPON_TUNING.rewardGrenade);
       else if (m.reward === 'rocket') this.weapons.grant('rocket', WEAPON_TUNING.rewardRocket);
       else if (m.reward === 'c4') this.weapons.grant('c4', WEAPON_TUNING.rewardC4);
@@ -288,6 +288,26 @@ export class Game {
         `wall colliders ${this.physics.chunkColliderCount} · collapse checks ${this.collapse?.stats.checks ?? 0} (${(this.collapse?.stats.lastCheckMs ?? 0).toFixed(1)} ms) · falling ${this.collapse?.bodyCount ?? 0}`
     );
     this.input.endFrame();
+  }
+
+  /** Debug: a row of 1 m cubes, one per material (ascending id), plus a two-tone wall segment, in front of the spawn. */
+  stampSwatches(): { ids: number[]; names: string[] } {
+    const w = this.world;
+    const ids = Object.keys(MATERIALS).map(Number).sort((a, b) => a - b);
+    const sx = Math.round(w.spawn.x * 2) - ids.length * 2;
+    const sz = Math.round(w.spawn.z * 2) + 12;
+    // Each cube sits on its own column's surface so the row follows the dunes beyond the pad.
+    ids.forEach((id, i) => {
+      const x0 = sx + i * 4;
+      const base = w.surfaceY(x0, sz) + 1;
+      for (let x = x0; x < x0 + 2; x++) for (let y = base; y < base + 2; y++) for (let z = sz; z < sz + 2; z++) w.setVoxel(x, y, z, id, 1);
+    });
+    // A taller wall segment behind the row to show rows and patterns at scale.
+    for (let x = sx; x < sx + ids.length * 4; x++) {
+      const base = w.surfaceY(x, sz + 8) + 1;
+      for (let y = base; y < base + 6; y++) w.setVoxel(x, y, sz + 8, [MAT.BRICK, MAT.WOOD, MAT.CONCRETE, MAT.MARBLE, MAT.STEEL, MAT.DRYWALL][Math.floor((x - sx) / 12) % 6], 1);
+    }
+    return { ids, names: ids.map((id) => MATERIALS[id].name) };
   }
 
   /** Debug: stamp a brick wall with a fuel tank behind it in front of the spawn. */

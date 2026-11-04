@@ -21,7 +21,7 @@ export interface GameEvents {
   structureLeveled: { id: number; name: string; bonus: number; totalValue: number };
   scoreChanged: { score: number; delta: number; multiplier: number; comboRemaining: number };
   combo: { multiplier: number; chain: number };
-  milestone: { index: number; callout: string; reward: string; score: number };
+  milestone: { index: number; callout: string; reward: string; score: number; quiet: boolean };
   roundEnd: { score: number };
   tick: { remaining: number };
   placedCharge: { count: number };

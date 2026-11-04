@@ -12,8 +12,9 @@ export interface Material {
   /** Glass: any hit destroys it regardless of energy. */
   shatters?: boolean;
   emissive?: boolean;
-  /** Pattern applied by the mesher. 'stripes' alternates rows of color/color2; 'band' paints every
-   *  fourth row color2; the rest darken or tint the base colour. */
+  /** Pattern applied by the mesher. 'stripes' and 'band' alternate rows of color/color2 (band is the
+   *  bottle/transformer variant, colour on odd rows so a 2-voxel bottle gets a coloured top); the
+   *  rest darken or tint the base colour. */
   pattern?: 'brickRows' | 'siding' | 'marble' | 'checker' | 'stripes' | 'band';
   /** Second colour for two-tone patterns. */
   color2?: string;

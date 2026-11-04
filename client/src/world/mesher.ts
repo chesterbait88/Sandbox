@@ -50,7 +50,8 @@ export function voxelColor(mat: number, x: number, y: number, z: number): [numbe
   const alt = altRgb[mat];
   const p = patternMat[mat];
   let base = baseRgb[mat];
-  if (alt && ((p === 'stripes' && (y & 1) === 1) || (p === 'band' && (y & 3) === 2))) base = alt;
+  // stripes: alternate rows; band: odd rows (so a 2-voxel bottle shows a coloured top).
+  if (alt && (y & 1) === 1 && (p === 'stripes' || p === 'band')) base = alt;
   const f = patternFactor(mat, x, y, z);
   return [Math.min(255, (base[0] * f) | 0), Math.min(255, (base[1] * f) | 0), Math.min(255, (base[2] * f) | 0)];
 }

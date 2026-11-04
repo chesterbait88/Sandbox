@@ -10,6 +10,7 @@ export class Callouts {
   constructor() {
     this.el.append(this.flash, this.banner);
     events.on('milestone', (m) => {
+      if (m.quiet) return;
       const reward = m.reward === 'time' ? '+5 s' : `+1 ${m.reward.toUpperCase()}`;
       this.show(m.callout, reward);
     });
