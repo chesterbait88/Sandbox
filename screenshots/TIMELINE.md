@@ -7,7 +7,7 @@ Frozen snapshots of the visual review gallery, oldest first. Each folder under `
 | 1 | [Phase 7: first review set](./timeline/01-phase-7/INDEX.md) | `4636885` | 2026-11-04 | 74 | The first committed gallery: 0.5 m voxels, arcade palette, orange UI, two-brick weapons, control hint in the round. |
 | 2 | [Pre-overhaul: propane cages as lattices](./timeline/02-pre-overhaul/INDEX.md) | `a7516b7` | 2026-11-04 | 74 | Same build with lattice propane cages so the bottles show; the set the overhaul review was made against. |
 | 3 | [Visual overhaul](./timeline/03-overhaul/INDEX.md) | `0d37536` | 2026-11-04 | 86 | 0.25 m voxels in a 96 m arena, detailed structures and props, road markings, weapons with hands, neon UI with anchored HUD plates, controls on the loadout screen, dusk skies. |
-| 4 | [Combo meter and leveled rewards](./timeline/04-combo-meter/INDEX.md) | `17e4f35` | 2026-11-04 | 87 | Combo plate with multiplier, chain, meter and power-boost timer; leveling refills a magazine and boosts power; smaller ammo plate with the C4 pip column; grenade count as a number. |
+| 4 | [Combo meter and leveled rewards](./timeline/04-combo-meter/INDEX.md) | `dfe1e97` | 2026-11-04 | 87 | Combo plate with multiplier, chain, meter and power-boost timer; leveling refills a magazine and boosts power (the LEVELED stamp says so); smaller ammo plate with the C4 pip column; grenade count as a number. |
 
 ## Side by side
 

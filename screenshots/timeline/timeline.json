@@ -34,8 +34,8 @@
     "slug": "combo-meter",
     "dir": "04-combo-meter",
     "title": "Combo meter and leveled rewards",
-    "notes": "Combo plate with multiplier, chain, meter and power-boost timer; leveling refills a magazine and boosts power; smaller ammo plate with the C4 pip column; grenade count as a number.",
-    "commit": "17e4f35",
+    "notes": "Combo plate with multiplier, chain, meter and power-boost timer; leveling refills a magazine and boosts power (the LEVELED stamp says so); smaller ammo plate with the C4 pip column; grenade count as a number.",
+    "commit": "dfe1e97",
     "date": "2026-11-04",
     "images": 87
   }
