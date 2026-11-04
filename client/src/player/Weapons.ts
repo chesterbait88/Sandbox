@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PROJECTILE_MODELS, VOXEL_SIZE, WEAPONS, WEAPON_TUNING, type Weapon } from '@vw/config';
+import { PROJECTILE_MODELS, VIEW_MODEL, VOXEL_SIZE, WEAPONS, WEAPON_TUNING, type Weapon } from '@vw/config';
 import type { RayHit, World } from '../world/World';
 import type { Controller } from './Controller';
 import type { Input } from './Input';
@@ -50,7 +50,8 @@ function initialReserve(w: Weapon, total = w.totalAmmo): number {
   if (w.kind === 'thrown' || w.kind === 'placed') return 0;
   return Math.max(0, total - w.magSize);
 }
-const PSIZE = { x: 8, y: 8, z: 12 };
+/** Projectile models share the in-hand canvas (see config/weaponModels.ts). */
+const PSIZE = VIEW_MODEL.size;
 
 /**
  * The loadout: selection, ammo, reload, firing, and the objects that leave the hands.

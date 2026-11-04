@@ -7,3 +7,4 @@ export * from './themes';
 export * from './player';
 export * from './effects';
 export * from './loadout';
+export * from './weaponModels';

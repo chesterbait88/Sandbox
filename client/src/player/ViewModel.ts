@@ -3,23 +3,49 @@ import { RENDER, VIEW_MODEL, WEAPON_TUNING, type ModelBox, type Weapon } from '@
 import { meshVoxels } from '../world/mesher';
 import { buildGeometry, createOpaqueMaterial, createTransparentMaterial } from '../world/VoxelMaterial';
 
-/** Fill a padded voxel array from inclusive boxes. */
-export function voxelsFromBoxes(boxes: ModelBox[], size: { x: number; y: number; z: number }): { vox: Uint8Array; P: number } {
-  const P = Math.max(size.x, size.y, size.z) + 2;
+/** Inclusive voxel bounds of a box list, clamped to the canvas. */
+function boundsOf(boxes: ModelBox[], size: { x: number; y: number; z: number }) {
+  let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const [x0, y0, z0, x1, y1, z1] of boxes) {
+    minX = Math.min(minX, Math.max(0, x0)); minY = Math.min(minY, Math.max(0, y0)); minZ = Math.min(minZ, Math.max(0, z0));
+    maxX = Math.max(maxX, Math.min(size.x - 1, x1)); maxY = Math.max(maxY, Math.min(size.y - 1, y1)); maxZ = Math.max(maxZ, Math.min(size.z - 1, z1));
+  }
+  return { minX, minY, minZ, maxX, maxY, maxZ };
+}
+
+/**
+ * Fill a padded voxel array from inclusive boxes. The cube is sized to the boxes' own extent
+ * (not the canvas) so small models mesh fast; `origin` is the canvas voxel at the cube's (0,0,0).
+ */
+export function voxelsFromBoxes(boxes: ModelBox[], size: { x: number; y: number; z: number }): { vox: Uint8Array; P: number; origin: { x: number; y: number; z: number } } {
+  const b = boundsOf(boxes, size);
+  const origin = { x: b.minX, y: b.minY, z: b.minZ };
+  const P = Math.max(b.maxX - b.minX, b.maxY - b.minY, b.maxZ - b.minZ) + 3;
   const vox = new Uint8Array(P ** 3);
   const idx = (x: number, y: number, z: number) => x + 1 + P * (z + 1 + P * (y + 1));
   for (const [x0, y0, z0, x1, y1, z1, m] of boxes) {
-    for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) if (x < size.x && y < size.y && z < size.z) vox[idx(x, y, z)] = m;
+    for (let y = Math.max(0, y0); y <= Math.min(size.y - 1, y1); y++)
+      for (let z = Math.max(0, z0); z <= Math.min(size.z - 1, z1); z++)
+        for (let x = Math.max(0, x0); x <= Math.min(size.x - 1, x1); x++) vox[idx(x - origin.x, y - origin.y, z - origin.z)] = m;
   }
-  return { vox, P };
+  return { vox, P, origin };
 }
+
+/** Meshed buffers per box list and voxel size: the loadout screen reuses the in-hand meshing. */
+const meshCache = new WeakMap<ModelBox[], Map<number, ReturnType<typeof meshVoxels>>>();
 
 const modelMats = { opaque: createOpaqueMaterial(VIEW_MODEL.voxelM, RENDER.viewModelStyle), transparent: createTransparentMaterial(VIEW_MODEL.voxelM, RENDER.viewModelStyle) };
 
 /** Mesh a small voxel model on the main thread (tiny arrays, not chunks). Centred on its bounds. */
 export function buildModelMesh(boxes: ModelBox[], size: { x: number; y: number; z: number }, voxelM: number): THREE.Group {
-  const { vox, P } = voxelsFromBoxes(boxes, size);
-  const r = meshVoxels(vox, { size: P, ox: 0, oy: 0, oz: 0, voxelSize: voxelM });
+  let byVoxel = meshCache.get(boxes);
+  if (!byVoxel) meshCache.set(boxes, (byVoxel = new Map()));
+  let r = byVoxel.get(voxelM);
+  if (!r) {
+    const { vox, P, origin } = voxelsFromBoxes(boxes, size);
+    r = meshVoxels(vox, { size: P, ox: origin.x, oy: origin.y, oz: origin.z, voxelSize: voxelM });
+    byVoxel.set(voxelM, r);
+  }
   const g = new THREE.Group();
   if (r.opaque.index.length) g.add(new THREE.Mesh(buildGeometry(r.opaque), modelMats.opaque));
   if (r.transparent.index.length) g.add(new THREE.Mesh(buildGeometry(r.transparent), modelMats.transparent));
@@ -44,19 +70,21 @@ export class ViewModel {
   private bobT = 0;
   private flash: THREE.Mesh;
   private flashUntil = 0;
-  private hands: THREE.Group;
+  /** Milliseconds spent meshing the models at construction (debug). */
+  readonly buildMs: number;
 
   constructor(weapons: Weapon[]) {
+    const t0 = performance.now();
     for (const w of weapons) {
+      // The hands are part of every model (config/weaponModels.ts), so nothing floats.
       const g = buildModelMesh(w.model, VIEW_MODEL.size, VIEW_MODEL.voxelM);
       g.visible = false;
+      const [px, py, pz] = w.pose ?? [0, 0, 0];
+      g.rotation.set(px, py, pz);
       this.models.set(w.id, g);
       this.root.add(g);
     }
-    const hm = VIEW_MODEL.handMat;
-    this.hands = buildModelMesh([[0, 0, 0, 2, 2, 3, hm], [9, 0, 0, 11, 2, 3, hm]], { x: 12, y: 3, z: 4 }, VIEW_MODEL.voxelM);
-    this.hands.position.set(0, -0.22, 0.45);
-    this.root.add(this.hands);
+    this.buildMs = performance.now() - t0;
     this.flash = new THREE.Mesh(
       new THREE.PlaneGeometry(0.25, 0.25),
       new THREE.MeshBasicMaterial({ color: '#ffd080', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
@@ -79,8 +107,9 @@ export class ViewModel {
     if (muzzle) {
       this.flashUntil = now + VIEW_MODEL.muzzleFlashMs;
       this.flash.visible = true;
-      const ext = this.current?.userData.extent as { z: number } | undefined;
-      this.flash.position.set(0, 0.05, -(ext?.z ?? 1.2) / 2 - 0.1);
+      const ext = this.current?.userData.extent as { y: number; z: number } | undefined;
+      // Barrels sit in the upper third of the canvas; the muzzle is the model's low-z end.
+      this.flash.position.set(0, (ext?.y ?? 0.4) * 0.15, -(ext?.z ?? 0.8) / 2 - 0.06);
       this.flash.rotation.z = Math.random() * Math.PI;
       this.flash.scale.setScalar(0.8 + Math.random() * 0.6);
     }
@@ -98,7 +127,8 @@ export class ViewModel {
     const bx = Math.sin(this.bobT) * bob;
     const by = Math.abs(Math.cos(this.bobT)) * bob;
     this.root.position.set(VIEW_MODEL.offset.x + bx, VIEW_MODEL.offset.y + by, VIEW_MODEL.offset.z + this.recoil * 0.12);
-    this.root.rotation.set(-this.recoil * 0.25, 0, 0);
+    const [pp, py, pr] = VIEW_MODEL.pose;
+    this.root.rotation.set(pp - this.recoil * 0.25, py, pr);
     if (this.swing > 0) {
       const s = Math.sin(this.swing * Math.PI);
       this.root.rotation.x -= s * 0.9;
