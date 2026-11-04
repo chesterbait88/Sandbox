@@ -432,6 +432,8 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `endRound()` — freeze, `roundEnd`, top-100 lookup, `RoundResult`
   - `toResults()`, `afterResults()`, `submitInitials(s)`, `toLeaderboard()`, `playAgain()`
   - `setRadial(open)` — 30 % time scale while the picker is open
+  - `canvasClick()` — re-request pointer lock mid-round; `skipCountdown()` — debug
+  - `set(state)` also starts/stops the menu music; countdown and end-freeze run on wall-clock deadlines so slow frames do not stretch them
   - `update(rawDt) → boolean` — orbit camera in menus, countdown swoop, clock while playing; returns whether the controller runs
   - `updateFreeze(rawDt)` — moves to results after the slow-motion freeze
 - `client/src/state/Round.ts` **[main]**
@@ -459,7 +461,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `client/src/render/Renderer.ts` **[main]**
   - `GameRenderer(canvas)` — WebGL2 renderer, camera, sun with shadow map, hemisphere light, overlay scene
   - `resize()` — fit the window
-  - `setFov(fov)` — camera FOV
+  - `setFov(fov)` — base camera FOV (settings); `setZoom(mul)` — aim zoom multiplier applied to both cameras
   - `setTheme(theme)` — sky, fog, sun colours from the theme table
   - `render()` — world pass then overlay pass
 - `client/src/world/World.ts` **[main]** (also constructed in tests)
@@ -560,6 +562,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 - `client/src/audio/Synth.ts` **[main]**
   - `prime()` — create the AudioContext and noise buffer early
   - `boom(power, dist)`, `shot(kind)`, `tink(dist)`, `swing(hit)`, `click(pitch)`, `stinger()` — procedural sounds; distance sets gain and low-pass
+  - `startMusic()`, `stopMusic()`, `musicPlaying` — four-chord bass + arpeggio loop scheduled a bar at a time (`MUSIC` in config)
   - `setVolume(v)`
 - `client/src/player/Weapons.ts` **[main]**
   - `Weapons(world, player, destruction, view)` — eight `WeaponState`s from the config table
@@ -648,15 +651,20 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Scores survive a restart; forged or replayed scores are rejected | `Db`, `TokenSigner`, `validate.ts`, `createApi` |
 | Contextual placement (roadside, blocks, paths, hills) | `candidates` in `placer.ts`, `Recipe.siting` |
 | Voxel outlines, bevel, hatch | `VoxelMaterial` fragment shader |
+| Menu music loop | `Synth.startMusic`, `Flow.set` |
+| Aim zoom | `Game.frame` → `GameRenderer.setZoom` |
+| Control hint during countdown and the first seconds | `UI` (`hud-hint`) |
+| Desktop-only notice on touch devices | `main.ts` |
+| Esc during a round pauses; Esc on pause resumes (debounced); click re-locks | `Input.onLockChange`, `UI` keydown, `Flow.canvasClick` |
 
 ## Planned, not built
 
 Modules in SPEC.md "Project structure" with no code at this commit:
 
-- Aim zoom (`adsFovMul` is in config; nothing applies it)
 
 ## Changelog
 
+- 2026-11-04: Phase 6 — music loop, aim zoom, hints, notice, wall-clock UI timers
 - 2026-11-04: Phase 5 — db.ts, token.ts, validate.ts, real api.ts; server subgraph and lifecycle sequence updated
 - 2026-11-04: Phase 4 — Flow, Round, api.ts, in-memory server routes, UI root, nine screens, eight HUD widgets; contextual siting and the outline shader; round lifecycle sequence
 - 2026-11-04: Phase 3 — StructureCtx, placer, 14 recipes, Score wired into Game; placement and scoring sequences

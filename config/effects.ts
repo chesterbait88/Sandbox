@@ -39,6 +39,18 @@ export const AUDIO = {
   lowpassFarHz: 600
 } as const;
 
+/** Menu music loop: tempo and chord cycle (Hz). */
+export const MUSIC = {
+  bpm: 112,
+  gain: 0.35,
+  chords: [
+    [110, 164.81, 220, 261.63],
+    [87.31, 130.81, 174.61, 220],
+    [98, 146.83, 196, 246.94],
+    [82.41, 123.47, 164.81, 207.65]
+  ]
+} as const;
+
 export const PHYSICS = {
   /** Fixed step (s) and the most steps taken in one frame before time is dropped. */
   step: 1 / 60,

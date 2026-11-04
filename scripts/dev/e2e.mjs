@@ -12,7 +12,13 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const state = () => page.evaluate(() => window.__flow.state);
 const step = async (label, fn, expect) => {
   await fn();
-  await page.waitForFunction((s) => window.__flow.state === s, expect, { timeout: 30000 });
+  try {
+    await page.waitForFunction((s) => window.__flow.state === s, expect, { timeout: 60000, polling: 250 });
+  } catch (e) {
+    const info = await page.evaluate(() => ({ state: window.__flow.state, result: !!window.__flow.result, running: window.__flow.round.running, remaining: window.__flow.round.remaining, freezeEnd: window.__flow.freezeEnd - performance.now(), timeScale: window.__vw.timeScale }));
+    console.error(`${label}: expected ${expect}, got`, JSON.stringify(info), 'errors:', errors);
+    throw e;
+  }
   console.log(`${label.padEnd(28)} → ${await state()}`);
 };
 await page.goto(`http://localhost:${port}/?seed=E2E&theme=desert`, { waitUntil: 'load' });
@@ -32,6 +38,8 @@ const wreck = await page.evaluate(() => {
 });
 console.log('wrecked'.padEnd(28), '→', JSON.stringify(wreck));
 await page.evaluate(() => (window.__flow.round.remaining = 0.5));
+await page.waitForTimeout(500);
+console.log('after fast-forward'.padEnd(28), '→', JSON.stringify(await page.evaluate(() => ({ state: window.__flow.state, remaining: window.__flow.round.remaining, running: window.__flow.round.running }))));
 await step('clock runs out', async () => {}, 'results');
 await page.waitForTimeout(2200);
 await step('click CONTINUE', () => page.click('text=CONTINUE'), 'initials');

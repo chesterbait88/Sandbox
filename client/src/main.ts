@@ -22,6 +22,13 @@ const ui = new UI(root, game, flow);
 game.flow = flow;
 game.uiUpdate = (dt, now) => ui.update(dt, now, game, flow);
 game.afterRender = (dt) => ui.loadout.renderViews(game.gfx.renderer, dt);
+canvas.addEventListener('click', () => flow.canvasClick());
+if (matchMedia('(pointer: coarse)').matches && !params.has('headless')) {
+  const n = document.createElement('div');
+  n.className = 'desktop-notice';
+  n.innerHTML = '<b>DESKTOP ONLY</b><span>Voxel Wreck needs a mouse and keyboard. Come back on a computer.</span>';
+  root.append(n);
+}
 window.__vw = game;
 window.__flow = flow;
 window.__ui = ui;
@@ -46,7 +53,8 @@ async function jump(screen: string): Promise<void> {
     case 'pause': {
       await flow.deploy();
       // Skip the countdown.
-      for (let i = 0; i < 4; i++) flow.update(1);
+      flow.skipCountdown();
+      flow.update(0);
       if (params.get('test') === 'wall') game.stampTestWall();
       if (screen === 'pause') flow.pause();
       break;

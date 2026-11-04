@@ -1,4 +1,4 @@
-import { AUDIO } from '@vw/config';
+import { AUDIO, MUSIC } from '@vw/config';
 
 /** Procedural Web Audio: noise bursts and tones. No sample files. Unlocks on the first gesture. */
 export class Synth {
@@ -10,7 +10,13 @@ export class Synth {
   constructor() {
     const unlock = () => {
       this.ensure();
-      this.ctx?.resume();
+      const wasPlaying = this.musicPlaying;
+      void this.ctx?.resume().then(() => {
+        if (wasPlaying) {
+          this.stopMusic();
+          this.startMusic();
+        }
+      });
     };
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
@@ -152,6 +158,80 @@ export class Synth {
     osc.connect(g).connect(this.master);
     osc.start(t);
     osc.stop(t + 0.05);
+  }
+
+  private musicTimer: number | null = null;
+  private musicGain: GainNode | null = null;
+  private musicBar = 0;
+
+  /** Menu music: a looping synth arpeggio over a bass line, scheduled one bar at a time. */
+  startMusic(): void {
+    const ctx = this.ensure();
+    if (!ctx || this.musicTimer !== null) return;
+    this.musicGain = ctx.createGain();
+    this.musicGain.gain.value = MUSIC.gain;
+    this.musicGain.connect(this.master);
+    this.musicBar = 0;
+    const scheduleBar = () => {
+      const c = this.ctx;
+      if (!c || !this.musicGain || c.state !== 'running') return;
+      const barLen = (60 / MUSIC.bpm) * 4;
+      const t0 = c.currentTime + 0.05;
+      const chord = MUSIC.chords[this.musicBar % MUSIC.chords.length];
+      // Bass: root, pulsing on each beat.
+      for (let b = 0; b < 4; b++) {
+        const o = c.createOscillator();
+        o.type = 'square';
+        o.frequency.value = chord[0] / 2;
+        const g = c.createGain();
+        const t = t0 + (b * barLen) / 4;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + barLen / 4 - 0.02);
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 500;
+        o.connect(lp).connect(g).connect(this.musicGain);
+        o.start(t);
+        o.stop(t + barLen / 4);
+      }
+      // Arpeggio: 8 sixteenth notes through the chord.
+      for (let n = 0; n < 8; n++) {
+        const o = c.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = chord[n % chord.length] * (n >= 4 ? 2 : 1);
+        const g = c.createGain();
+        const t = t0 + (n * barLen) / 8;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.22, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + barLen / 8);
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(2600, t);
+        lp.frequency.exponentialRampToValueAtTime(600, t + barLen / 8);
+        o.connect(lp).connect(g).connect(this.musicGain);
+        o.start(t);
+        o.stop(t + barLen / 8);
+      }
+      this.musicBar++;
+      this.musicTimer = window.setTimeout(scheduleBar, barLen * 1000 - 60);
+    };
+    this.musicTimer = window.setTimeout(scheduleBar, 0);
+  }
+
+  stopMusic(): void {
+    if (this.musicTimer !== null) window.clearTimeout(this.musicTimer);
+    this.musicTimer = null;
+    if (this.musicGain && this.ctx) {
+      const g = this.musicGain;
+      g.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
+      window.setTimeout(() => g.disconnect(), 800);
+    }
+    this.musicGain = null;
+  }
+
+  get musicPlaying(): boolean {
+    return this.musicTimer !== null;
   }
 
   /** Milestone stinger: rising arpeggio. */

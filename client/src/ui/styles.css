@@ -173,3 +173,9 @@ button, input { font-family: inherit; }
 .hud-countdown { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-family: var(--display); font-size: 160px; color: #fff; text-shadow: 6px 6px 0 var(--accent), 12px 12px 0 #000a; }
 .hud-countdown.pulse { animation: cpulse .9s ease-out; }
 @keyframes cpulse { 0% { transform: translate(-50%, -50%) scale(2); opacity: 0 } 20% { opacity: 1 } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1 } }
+
+.hud-hint { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); font-family: var(--display); font-size: 18px; letter-spacing: 3px; color: #fff; background: var(--panel); border: 2px solid var(--line); padding: 8px 18px; opacity: 0; transition: opacity .4s; white-space: nowrap; }
+.hud-hint.on { opacity: 1; }
+.desktop-notice { position: absolute; inset: 0; z-index: 100; background: #0b0d14; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; }
+.desktop-notice b { font-family: var(--display); font-size: 44px; letter-spacing: 3px; color: var(--accent); }
+.desktop-notice span { font-size: 20px; color: var(--muted); max-width: 420px; }

@@ -36,8 +36,9 @@ export class Flow {
   radialOpen = false;
   private onChange: ((s: ScreenName, prev: ScreenName) => void)[] = [];
   private orbitT = 0;
-  private countdownT = 0;
-  private endFreezeT = 0;
+  /** Wall-clock deadlines (ms) so slow frames do not stretch UI timers. */
+  private countdownEnd = 0;
+  private freezeEnd = 0;
   private worldReady = false;
   private loading: Promise<void> | null = null;
 
@@ -46,7 +47,8 @@ export class Flow {
       if (m.reward === 'time') this.round.addTime();
     });
     game.input.onLockChange = (locked) => {
-      if (!locked && this.state === 'playing') this.pause();
+      // Losing the lock mid-round pauses; losing it because the round ended does not.
+      if (!locked && this.state === 'playing' && this.round.running) this.pause();
     };
   }
 
@@ -58,6 +60,14 @@ export class Flow {
     const prev = this.state;
     this.state = s;
     for (const fn of this.onChange) fn(s, prev);
+    const musicStates: ScreenName[] = ['menu', 'worldPicker', 'loadout', 'leaderboard', 'results', 'initials'];
+    if (musicStates.includes(s)) this.game.audio.startMusic();
+    else this.game.audio.stopMusic();
+  }
+
+  /** Called when the canvas is clicked: re-lock the pointer mid-round (e.g. after a rejected lock). */
+  canvasClick(): void {
+    if (this.state === 'playing') this.game.input.requestLock();
   }
 
   /** Boot: load a random arena for the menu backdrop. */
@@ -114,12 +124,15 @@ export class Flow {
   }
 
   async deploy(): Promise<void> {
+    // Lock on the DEPLOY click gesture; the countdown camera ignores the mouse anyway.
+    this.game.input.requestLock();
+    this.game.audio.stopMusic();
     if (!this.worldReady) await this.loading;
     this.session = await api.startSession(this.theme, this.seed).catch(() => null);
     this.game.weapons.reset();
     this.game.player.spawn(this.game.world.spawn, this.game.world.spawnYaw);
     this.game.score.reset(this.game.world.structures);
-    this.countdownT = SCORING.countdownSeconds;
+    this.countdownEnd = performance.now() + SCORING.countdownSeconds * 1000;
     this.set('countdown');
   }
 
@@ -132,8 +145,11 @@ export class Flow {
     this.set('playing');
   }
 
+  pausedAt = 0;
+
   pause(): void {
     if (this.state !== 'playing') return;
+    this.pausedAt = performance.now();
     this.game.timeScale = 0;
     this.game.weapons.enabled = false;
     this.game.input.releaseLock();
@@ -162,7 +178,7 @@ export class Flow {
     this.game.weapons.enabled = false;
     this.game.player.frozen = true;
     this.game.timeScale = SCORING.endFreezeScale;
-    this.endFreezeT = SCORING.endFreezeS;
+    this.freezeEnd = performance.now() + SCORING.endFreezeS * 1000;
     events.emit('roundEnd', { score: s.score });
     this.game.input.releaseLock();
     const q = await api.qualifies(this.theme, s.score).catch(() => ({ rank: 0, qualifies: false, needed: 0 }));
@@ -244,8 +260,8 @@ export class Flow {
         return false;
       }
       case 'countdown': {
-        this.countdownT -= rawDt;
-        const t = 1 - Math.max(0, this.countdownT) / SCORING.countdownSeconds;
+        const left = (this.countdownEnd - performance.now()) / 1000;
+        const t = 1 - Math.max(0, left) / SCORING.countdownSeconds;
         const ease = t * t * (3 - 2 * t);
         const sp = this.game.world.spawn;
         const eye = this.game.player.eye();
@@ -254,7 +270,7 @@ export class Flow {
         cam.rotation.order = 'YXZ';
         cam.rotation.y = this.game.player.yaw;
         cam.rotation.x = -(1 - ease) * 0.9;
-        if (this.countdownT <= 0) this.startPlaying();
+        if (left <= 0) this.startPlaying();
         return false;
       }
       case 'playing': {
@@ -271,16 +287,20 @@ export class Flow {
   }
 
   /** Called every frame while the round-end freeze runs; moves to results when it elapses. */
-  updateFreeze(rawDt: number): void {
-    if (this.endFreezeT > 0 && this.state === 'playing') {
-      this.endFreezeT -= rawDt;
-      if (this.endFreezeT <= 0 && this.result) this.toResults();
-      else if (this.endFreezeT <= 0) this.endFreezeT = 0.01; // wait for the qualifies lookup
+  updateFreeze(_rawDt: number): void {
+    if (this.freezeEnd > 0 && this.state === 'playing' && performance.now() >= this.freezeEnd && this.result) {
+      this.freezeEnd = 0;
+      this.toResults();
     }
   }
 
+  /** Debug: end the countdown now. */
+  skipCountdown(): void {
+    this.countdownEnd = 0;
+  }
+
   get countdownValue(): number {
-    return Math.ceil(this.countdownT);
+    return Math.ceil((this.countdownEnd - performance.now()) / 1000);
   }
 
   static readonly THEMES = THEME_IDS;

@@ -50,6 +50,8 @@ export class Game {
   uiUpdate: ((dt: number, now: number) => void) | null = null;
   /** Longest main-thread frame since last reset (ms). */
   worstFrame = 0;
+  /** Current FOV multiplier (aim zoom). */
+  private zoom = 1;
 
   constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement) {
     this.gfx = new GameRenderer(canvas);
@@ -200,6 +202,9 @@ export class Game {
       for (const h of this.frameHooks) h(dt, now);
       const hv = Math.hypot(this.player.velocity.x, this.player.velocity.z);
       this.view.update(dt, now, hv > 0.5 && this.player.onGround, hv);
+      const targetZoom = this.weapons.aiming && playing ? WEAPON_TUNING.adsFovMul : 1;
+      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 14);
+      this.gfx.setZoom(this.zoom);
       if (playing) this.effects.applyShake(this.gfx.camera);
       this.flow?.updateFreeze(rawDt);
     }

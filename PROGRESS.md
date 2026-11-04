@@ -1,5 +1,12 @@
 # Progress
 
+## Phase 6 — polish (done)
+- Done (new): synth menu music loop (bass + arpeggio, stops on deploy), aim zoom on Mouse 2, control hint on the countdown and the first 9 s of a round, desktop-only notice for touch devices, OpenGraph/description meta + `og.svg`, pointer lock requested on the DEPLOY click with click-to-relock and an Esc debounce, round end no longer trips the lock-loss pause, countdown and end-freeze on wall-clock deadlines, loadout models framed closer. Already in from earlier phases: transitions, number ticks, hit markers, muzzle flash, weapon bob, theme sky/fog, slow-mo round end, favicon, settings persisted to localStorage.
+- Next: phase 7 stretch only if budget remains (trimesh colliders, structural collapse, point-buy loadouts, sticky grenades, replay links). First: a hands-on pass in a real browser is the one check this sandbox cannot do (pointer lock, audio, GPU fps).
+- Blockers: none.
+- FPS / timing: headless software rendering only; the frame loop's CPU side is unchanged from phase 2 numbers.
+- Open decisions: see DECISIONS.md.
+
 ## Phase 5 — server + deploy (done)
 - Done: SQLite (`better-sqlite3`, WAL) under `DATA_DIR`, HMAC session tokens (`SCORE_SECRET`), validation (initials regex + profanity → `???`, 150–600 s window, per-theme score cap, single-use nonces), per-IP rate limit on sessions, 5 s leaderboard cache, IP hash only; 8 server tests (token tamper, validation, forged/early/replayed/implausible rejections, rate limit, qualifies, cache); README with run/deploy/env; Dockerfile + compose written (untested: no daemon here). Verified by hand: forged `curl` → 403, oversized score → 400, replay → 403, and a real score is still on the leaderboard after killing and restarting the server with the same `DATA_DIR`.
 - Next: phase 6 polish (transitions, number ticks, hit markers, muzzle flash, weapon bob exist; add menu music loop, theme sky/fog, aim zoom, favicon/OpenGraph, desktop-only notice, loadout model size, misc).

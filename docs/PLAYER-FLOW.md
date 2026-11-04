@@ -28,10 +28,11 @@ flowchart LR
 
 What each screen does:
 
-- **Start menu**: title, PLAY / LEADERBOARD / SETTINGS / CREDITS, and a "best" strip with the top score on record.
+- **Start menu**: title, PLAY / LEADERBOARD / SETTINGS / CREDITS, and a "best" strip with the top score on record. A synth music loop plays on every screen outside the round (it starts after the first click, as browsers require).
+- **Phones and tablets** get a "desktop only" notice instead of the game.
 - **World picker**: three theme cards (name, description, top score), a seed field with a dice button. Clicking a card rebuilds the arena behind the screen so you see what you picked.
 - **Loadout**: the eight slots with spinning models, ammo and role, plus the arena's total points standing and the round length. DEPLOY.
-- **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad.
+- **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad, with a one-line control hint that stays for the first few seconds of the round.
 - **Pause**: Esc releases the mouse; RESUME / SETTINGS (sensitivity, volume, FOV, remembered) / QUIT TO MENU.
 - **Results**: a 1.5 s slow-motion freeze, then structures leveled, voxels destroyed, biggest chain, arena wrecked and the final score count up. Says whether you made the top 100 or how many more points you needed.
 - **Initials**: three arcade letter columns. Type, or use the arrows; ENTER submits.
@@ -133,7 +134,7 @@ sequenceDiagram
 | Shift | Sprint |
 | Space | Jump |
 | Mouse 1 | Fire, swing, throw, place C4 (click again to detonate) |
-| Mouse 2 | Aim: tighter spread (C4: detonate) |
+| Mouse 2 | Aim: the view zooms in and spread tightens (C4: detonate) |
 | 1–8, wheel | Switch weapon |
 | Q (hold) | Radial weapon picker, slow motion |
 | R | Reload |
@@ -190,12 +191,12 @@ Same theme and seed always build the same arena. Structures never float: each st
 
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
-- Aim zoom (Mouse 2 only tightens spread; the FOV does not change).
 - Live low-res renders on the theme cards (cards are stylised art; the arena behind the picker is the live one).
 
 
 ## Changelog
 
+- 2026-11-04: Phase 6 — menu music, aim zoom, control hints, desktop-only notice, pointer-lock robustness
 - 2026-11-04: Phase 5 — scores persist on the server with signed sessions and validation
 - 2026-11-04: Phase 4 — all screens, the round clock, HUD, radial picker, pause, results, initials, leaderboard; palette, outlines and contextual siting from user requests
 - 2026-11-04: Phase 3 — three arenas with fourteen structure types, scoring with combos, leveled bonus and milestones

@@ -58,9 +58,26 @@ export class GameRenderer {
     this.renderer.setSize(w, h);
   }
 
+  private baseFov: number = RENDER.fov;
+  private zoom = 1;
+
   setFov(fov: number): void {
-    this.camera.fov = fov;
+    this.baseFov = fov;
+    this.applyFov();
+  }
+
+  /** FOV multiplier for aiming. */
+  setZoom(z: number): void {
+    if (Math.abs(z - this.zoom) < 1e-4) return;
+    this.zoom = z;
+    this.applyFov();
+  }
+
+  private applyFov(): void {
+    this.camera.fov = this.baseFov * this.zoom;
     this.camera.updateProjectionMatrix();
+    this.overlayCamera.fov = this.baseFov * this.zoom;
+    this.overlayCamera.updateProjectionMatrix();
   }
 
   setTheme(theme: ThemeId): void {

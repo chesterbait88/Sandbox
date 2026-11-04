@@ -34,3 +34,6 @@
 - **Round time window is enforced from the server's clock** (token `startedAt` is server-issued). `VW_DEV_NO_TIME_CHECK=1` disables it so the e2e and screenshot scripts can finish a round in seconds; never set it in production.
 - **Used tokens are stored in SQLite** (`used_tokens`, pruned after 20 minutes) rather than memory so a replay across a restart is still refused.
 - **Rank semantics**: before submission a score ranks below equal scores (for the "you'd need N more" line); after insertion ties share a rank.
+- **UI timers (countdown, round-end freeze) use wall-clock deadlines**, not accumulated frame time, because the frame loop clamps dt at 50 ms and a slow machine would stretch a 3 s countdown to 10 s.
+- **Pointer lock is requested on the DEPLOY click** (the gesture) and again on any canvas click while playing; losing the lock pauses only while the clock is running.
+- **Menu music is a scheduled synth loop** (`MUSIC` chords in `config/effects.ts`), started on menu screens and after the first gesture resumes the AudioContext.

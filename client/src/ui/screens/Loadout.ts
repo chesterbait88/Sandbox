@@ -25,7 +25,7 @@ export class LoadoutScreen extends Screen {
     const dl = new THREE.DirectionalLight('#ffffff', 1.6);
     dl.position.set(1, 2, 2);
     this.scene.add(dl);
-    this.camera.position.set(0, 0.2, 0.95);
+    this.camera.position.set(0, 0.16, 0.72);
     this.camera.lookAt(0, 0, 0);
     for (const w of WEAPONS) {
       const slot = h('div', 'slot');

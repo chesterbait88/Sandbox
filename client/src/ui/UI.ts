@@ -20,6 +20,9 @@ import { Crosshair } from './hud/Crosshair';
 import { Callouts } from './hud/Callouts';
 import { Countdown } from './hud/Countdown';
 
+/** How long the control hint stays on screen after the round starts. */
+const HUD_HINT_MS = 9000;
+
 /** The DOM overlay: one screen at a time plus the HUD during play. Subscribes to Flow and events. */
 export class UI {
   readonly screens: Record<string, Screen>;
@@ -32,6 +35,8 @@ export class UI {
   readonly crosshair: Crosshair;
   readonly callouts = new Callouts();
   readonly countdown = new Countdown();
+  private hint!: HTMLElement;
+  private hintUntil = 0;
   readonly loadout: LoadoutScreen;
   private overlay: Screen | null = null;
   private current: Screen | null = null;
@@ -54,14 +59,15 @@ export class UI {
     this.radial = new Radial(game.weapons, flow);
     this.crosshair = new Crosshair(game.weapons);
     for (const s of Object.values(this.screens)) root.append(s.el);
-    this.hud.append(this.scoreBar.el, this.timer.el, this.radial.el, this.ammo.el, this.readout.el, this.crosshair.el, this.callouts.el, this.countdown.el);
+    this.hint = h('div', 'hud-hint', 'WASD MOVE · MOUSE 1 FIRE · 1-8 / Q WEAPONS · G GRENADE · R RELOAD · ESC PAUSE');
+    this.hud.append(this.scoreBar.el, this.timer.el, this.radial.el, this.ammo.el, this.readout.el, this.crosshair.el, this.callouts.el, this.countdown.el, this.hint);
     this.hud.style.display = 'none';
     root.append(this.hud);
     flow.onStateChange((s) => this.onState(s));
     window.addEventListener('keydown', (e) => {
       if (e.code !== 'Escape') return;
       if (this.overlay) this.showOverlay(null);
-      else if (flow.state === 'paused') flow.resume();
+      else if (flow.state === 'paused' && performance.now() - flow.pausedAt > 400) flow.resume();
     });
     // Pointer-lock exit already pauses; Esc in menus is handled above.
   }
@@ -85,7 +91,11 @@ export class UI {
     this.hud.style.display = inRound ? '' : 'none';
     this.hud.classList.toggle('dim', s === 'paused');
     this.countdown.el.style.display = s === 'countdown' ? '' : 'none';
-    if (s === 'countdown') this.scoreBar.reset();
+    if (s === 'countdown') {
+      this.scoreBar.reset();
+      this.hintUntil = performance.now() + HUD_HINT_MS;
+    }
+    this.hint.classList.toggle('on', s === 'countdown' || (s === 'playing' && performance.now() < this.hintUntil));
   }
 
   showOverlay(s: Screen | null): void {
@@ -97,6 +107,7 @@ export class UI {
   /** Per frame, unscaled dt and game time. */
   update(dt: number, now: number, game: Game, flow: Flow): void {
     if (flow.state === 'countdown') this.countdown.set(flow.countdownValue);
+    if (flow.state === 'playing' && this.hint.classList.contains('on') && performance.now() > this.hintUntil) this.hint.classList.remove('on');
     if (flow.state === 'playing') {
       this.radial.update(game.input);
       this.crosshair.update();
