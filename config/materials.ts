@@ -25,6 +25,7 @@ export const MATERIALS: Record<number, Material> = {
   4: { id: 4, name: 'Stone', color: '#8a8a85', value: 0, hardness: 3, terrain: true },
   5: { id: 5, name: 'Asphalt', color: '#3a3a3c', value: 0, hardness: 2, terrain: true },
   6: { id: 6, name: 'Gravel', color: '#a39e92', value: 0, hardness: 1, terrain: true, pattern: 'checker' },
+  8: { id: 8, name: 'Sidewalk', color: '#b5b3aa', value: 0, hardness: 3, terrain: true },
   7: { id: 7, name: 'Water', color: '#4a90c8', value: 0, hardness: 1, terrain: true, transparent: true },
   10: { id: 10, name: 'Glass', color: '#a8d8f0', value: 1, hardness: 1, transparent: true, shatters: true },
   11: { id: 11, name: 'Wood', color: '#a06b3c', value: 2, hardness: 2, pattern: 'siding' },
@@ -58,7 +59,9 @@ export const MAT = {
   NEON: 17,
   FUEL: 20,
   PROPANE: 21,
-  TRANSFORMER: 22
+  TRANSFORMER: 22,
+  /** Downtown sidewalk: terrain-valued concrete look-alike. */
+  CONCRETE_SIDEWALK: 8
 } as const;
 
 export const MAX_MATERIAL_ID = 32;

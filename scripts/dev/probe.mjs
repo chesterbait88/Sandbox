@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+const port = 8098;
+const server = spawn(process.execPath, ['server/dist/index.js'], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
+await new Promise(r => setTimeout(r, 800));
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.on('pageerror', e => console.error('[pageerror]', e.message));
+page.on('console', m => console.log('[console]', m.text()));
+await page.goto(`http://localhost:${port}/?seed=1234&debug=1` + (process.env.QS ?? ''), { waitUntil: 'load' });
+await page.waitForFunction(() => window.__vwReady === true, null, { timeout: Number(process.env.WAIT ?? 60000) }).catch(e => console.log('not ready:', e.message));
+const script = process.env.PROBE ?? 'return JSON.stringify(window.__vw.chunks.stats)';
+const result = await page.evaluate(new Function(script));
+console.log('RESULT', result);
+if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+await browser.close();
+server.kill();

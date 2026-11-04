@@ -2,3 +2,4 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d12; fon
 #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
 .phase0 { position: absolute; left: 16px; top: 16px; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: 28px; letter-spacing: 1px; }
+.debug-overlay { position: absolute; left: 12px; bottom: 12px; color: #c8ffb0; font: 13px/1.4 monospace; white-space: pre; background: rgba(0,0,0,.45); padding: 6px 8px; border-radius: 4px; }

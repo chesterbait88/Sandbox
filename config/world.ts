@@ -21,11 +21,15 @@ export const RENDER = {
   aoStrength: 0.35,
   /** Dirty chunks sent to the mesher per frame. */
   remeshPerFrame: 4,
+  /** Chunks per frame while a whole world is loading. */
+  remeshBurst: 64,
   /** Number of mesher workers. */
   mesherWorkers: 2,
   sunIntensity: 2.2,
   hemiIntensity: 0.9,
   shadowMapSize: 2048,
+  shadowBias: -0.0002,
+  shadowNormalBias: 0.6,
   /** Camera settings */
   fov: 75,
   near: 0.05,
