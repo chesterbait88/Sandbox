@@ -1,66 +1,81 @@
 import { Hono } from 'hono';
-import { SCORING, THEME_IDS } from '@vw/config';
+import { createHash } from 'node:crypto';
+import { SCORING } from '@vw/config';
+import type { Db } from './db';
+import { TokenSigner } from './token';
+import { cleanInitials, isTheme, RateLimiter, validElapsed, validScore } from './validate';
 
-/**
- * Phase 4: in-memory implementation of the API so the client flow runs end to end.
- * Phase 5 replaces storage with SQLite, signed tokens, validation, rate limiting and caching.
- */
-interface Row {
-  theme: string;
-  seed: string;
-  initials: string;
-  score: number;
-  date: string;
+export interface ApiOptions {
+  db: Db;
+  signer: TokenSigner;
+  /** Dev/e2e only: skip the 150–600 s elapsed-time window. */
+  skipTimeCheck?: boolean;
+  now?: () => number;
 }
 
-const rows: Row[] = [];
-const sessions = new Map<string, { theme: string; seed: string; startedAt: number; used: boolean }>();
+/** The game API: sessions, score submission, leaderboard, top-100 check, health. */
+export function createApi(opts: ApiOptions): Hono {
+  const { db, signer } = opts;
+  const now = opts.now ?? (() => Date.now());
+  const api = new Hono();
+  const limiter = new RateLimiter(SCORING.sessionRateLimitPerMin, 60_000);
+  const cache = new Map<string, { at: number; body: unknown }>();
 
-export const api = new Hono();
+  const ipOf = (c: { req: { header: (n: string) => string | undefined } }): string =>
+    c.req.header('x-forwarded-for')?.split(',')[0].trim() || c.req.header('x-real-ip') || 'local';
+  const ipHash = (ip: string): string => createHash('sha256').update(ip).digest('hex').slice(0, 16);
 
-api.get('/health', (c) => c.json({ ok: true }));
+  api.get('/health', (c) => c.json({ ok: true }));
 
-api.post('/session', async (c) => {
-  const body = await c.req.json<{ theme: string; seed: string }>().catch(() => null);
-  if (!body || !THEME_IDS.includes(body.theme as (typeof THEME_IDS)[number])) return c.json({ error: 'bad theme' }, 400);
-  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const startedAt = Date.now();
-  sessions.set(token, { theme: body.theme, seed: String(body.seed ?? ''), startedAt, used: false });
-  return c.json({ token, startedAt });
-});
+  api.post('/session', async (c) => {
+    const ip = ipOf(c);
+    if (!limiter.allow(ip, now())) return c.json({ error: 'rate limited' }, 429);
+    const body = await c.req.json<{ theme?: unknown; seed?: unknown }>().catch(() => null);
+    if (!body || !isTheme(body.theme)) return c.json({ error: 'bad theme' }, 400);
+    const seed = typeof body.seed === 'string' ? body.seed.slice(0, 32) : '';
+    const startedAt = now();
+    const token = signer.sign({ theme: body.theme, seed, startedAt, nonce: TokenSigner.nonce() });
+    return c.json({ token, startedAt });
+  });
 
-function sorted(theme: string): Row[] {
-  return rows.filter((r) => theme === 'all' || r.theme === theme).sort((a, b) => b.score - a.score || a.date.localeCompare(b.date));
+  api.post('/score', async (c) => {
+    const body = await c.req.json<{ token?: unknown; initials?: unknown; score?: unknown; stats?: unknown }>().catch(() => null);
+    if (!body || typeof body.token !== 'string') return c.json({ accepted: false, reason: 'bad body' }, 400);
+    const session = signer.verify(body.token);
+    if (!session) return c.json({ accepted: false, reason: 'bad token' }, 403);
+    if (!validElapsed(session.startedAt, now(), opts.skipTimeCheck)) return c.json({ accepted: false, reason: 'outside round window' }, 403);
+    const initials = cleanInitials(body.initials);
+    if (!initials) return c.json({ accepted: false, reason: 'bad initials' }, 400);
+    if (!validScore(session.theme, body.score)) return c.json({ accepted: false, reason: 'implausible score' }, 400);
+    if (!db.useToken(session.nonce, now())) return c.json({ accepted: false, reason: 'token already used' }, 403);
+    db.pruneTokens(now(), SCORING.maxRoundElapsedS * 2000);
+    const stats = body.stats && typeof body.stats === 'object' ? JSON.stringify(body.stats).slice(0, 2000) : '{}';
+    db.insertScore({ theme: session.theme, seed: session.seed, initials, score: body.score, stats_json: stats, ip_hash: ipHash(ipOf(c)) });
+    cache.clear();
+    return c.json({ accepted: true, rank: db.rankFor(session.theme, body.score), initials });
+  });
+
+  api.get('/leaderboard', (c) => {
+    const theme = c.req.query('theme') ?? 'all';
+    if (theme !== 'all' && !isTheme(theme)) return c.json({ entries: [] });
+    const limit = Math.max(1, Math.min(SCORING.leaderboardSize, Number(c.req.query('limit') ?? 10) || 10));
+    const key = `${theme}:${limit}`;
+    const hit = cache.get(key);
+    if (hit && now() - hit.at < SCORING.leaderboardCacheMs) return c.json(hit.body as object);
+    const body = { entries: db.top(theme, limit) };
+    cache.set(key, { at: now(), body });
+    return c.json(body);
+  });
+
+  api.get('/qualifies', (c) => {
+    const theme = c.req.query('theme') ?? 'all';
+    if (theme !== 'all' && !isTheme(theme)) return c.json({ rank: 0, qualifies: false, needed: 0 });
+    const score = Math.max(0, Math.floor(Number(c.req.query('score') ?? 0) || 0));
+    const rank = db.rankFor(theme, score, true);
+    const cutoff = db.cutoff(theme);
+    const qualifies = rank <= SCORING.leaderboardSize;
+    return c.json({ rank, qualifies, needed: qualifies || cutoff === null ? 0 : cutoff - score + 1 });
+  });
+
+  return api;
 }
-
-api.post('/score', async (c) => {
-  const body = await c.req.json<{ token: string; initials: string; score: number }>().catch(() => null);
-  if (!body) return c.json({ accepted: false, reason: 'bad body' }, 400);
-  const s = sessions.get(body.token);
-  if (!s || s.used) return c.json({ accepted: false, reason: 'bad token' }, 403);
-  if (!/^[A-Z ]{3}$/.test(body.initials)) return c.json({ accepted: false, reason: 'bad initials' }, 400);
-  if (typeof body.score !== 'number' || body.score < 0) return c.json({ accepted: false, reason: 'bad score' }, 400);
-  s.used = true;
-  rows.push({ theme: s.theme, seed: s.seed, initials: body.initials, score: Math.floor(body.score), date: new Date().toISOString() });
-  const rank = sorted(s.theme).findIndex((r) => r.score === Math.floor(body.score) && r.initials === body.initials) + 1;
-  return c.json({ accepted: true, rank });
-});
-
-api.get('/leaderboard', (c) => {
-  const theme = c.req.query('theme') ?? 'all';
-  const limit = Math.min(100, Number(c.req.query('limit') ?? 10));
-  const entries = sorted(theme)
-    .slice(0, limit)
-    .map((r, i) => ({ rank: i + 1, initials: r.initials, score: r.score, date: r.date.slice(0, 10), seed: r.seed }));
-  return c.json({ entries });
-});
-
-api.get('/qualifies', (c) => {
-  const theme = c.req.query('theme') ?? 'all';
-  const score = Number(c.req.query('score') ?? 0);
-  const list = sorted(theme);
-  const rank = list.filter((r) => r.score > score).length + 1;
-  const cutoff = list[SCORING.leaderboardSize - 1];
-  const qualifies = rank <= SCORING.leaderboardSize;
-  return c.json({ rank, qualifies, needed: qualifies ? 0 : cutoff.score - score + 1 });
-});

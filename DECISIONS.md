@@ -31,3 +31,6 @@
 - **World picker cards are stylised CSS art**, not live low-res renders: the live arena behind the picker rebuilds when a card is clicked, which gives the same information with one renderer.
 - **Phase 4 server is in memory** (`server/src/api.ts`): same routes and shapes as the spec, no persistence; phase 5 swaps in SQLite, signed tokens and validation. An extra `GET /qualifies` route backs the results screen's "you'd need N more" line.
 - **Debug jump points** (`?screen=menu|picker|loadout|hud|pause|results|initials|leaderboard`) exist only for the screenshot script; results/initials use a fake result.
+- **Round time window is enforced from the server's clock** (token `startedAt` is server-issued). `VW_DEV_NO_TIME_CHECK=1` disables it so the e2e and screenshot scripts can finish a round in seconds; never set it in production.
+- **Used tokens are stored in SQLite** (`used_tokens`, pruned after 20 minutes) rather than memory so a replay across a restart is still refused.
+- **Rank semantics**: before submission a score ranks below equal scores (for the "you'd need N more" line); after insertion ties share a rank.

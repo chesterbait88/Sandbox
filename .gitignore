@@ -4,4 +4,5 @@ dist
 .DS_Store
 data/
 screenshots/*.png
+screenshots/.data*
 .vite

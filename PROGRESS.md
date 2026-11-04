@@ -1,5 +1,12 @@
 # Progress
 
+## Phase 5 — server + deploy (done)
+- Done: SQLite (`better-sqlite3`, WAL) under `DATA_DIR`, HMAC session tokens (`SCORE_SECRET`), validation (initials regex + profanity → `???`, 150–600 s window, per-theme score cap, single-use nonces), per-IP rate limit on sessions, 5 s leaderboard cache, IP hash only; 8 server tests (token tamper, validation, forged/early/replayed/implausible rejections, rate limit, qualifies, cache); README with run/deploy/env; Dockerfile + compose written (untested: no daemon here). Verified by hand: forged `curl` → 403, oversized score → 400, replay → 403, and a real score is still on the leaderboard after killing and restarting the server with the same `DATA_DIR`.
+- Next: phase 6 polish (transitions, number ticks, hit markers, muzzle flash, weapon bob exist; add menu music loop, theme sky/fog, aim zoom, favicon/OpenGraph, desktop-only notice, loadout model size, misc).
+- Blockers: Docker build unverified in this sandbox.
+- FPS / timing: unchanged.
+- Open decisions: see DECISIONS.md.
+
 ## Phase 4 — game flow + HUD (done)
 - Done: `Flow` state machine (menu → worldPicker → loadout → countdown → playing ⇄ paused → results → initials → leaderboard → menu) with the 180 s `Round` clock and +5 s rewards; nine DOM screens (menu over an orbiting live arena, picker with live theme switch + seed/dice, loadout with spinning model viewports, pause, settings persisted to localStorage, credits, results with count-ups and top-100 check, arcade initials, leaderboard tabs); HUD (score bar + combo ring, timer, Q radial with slow-mo, ammo + pips + ARMED, structure readout + LEVELED stamp, crosshair + hit markers, milestone callouts + flash, countdown); in-memory server routes for session/score/leaderboard/qualifies; `scripts/dev/e2e.mjs` plays a full round through the DOM with zero page errors; `pnpm screenshots` captures all eight screens. Also from user requests mid-phase: arcade palette with two-tone volatiles, per-voxel outline/bevel/hatch shader, contextual siting with a downtown street grid.
 - Next: phase 5 server (SQLite on a volume, HMAC session tokens, time window + score cap validation, rate limit, profanity list, leaderboard cache, README).

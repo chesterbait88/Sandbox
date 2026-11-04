@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 const port = 8096;
-const server = spawn(process.execPath, ['server/dist/index.js'], { env: { ...process.env, PORT: String(port) }, stdio: 'ignore' });
+const server = spawn(process.execPath, ['server/dist/index.js'], { env: { ...process.env, PORT: String(port), VW_DEV_NO_TIME_CHECK: '1', DATA_DIR: 'screenshots/.data-e2e' }, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 800));
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

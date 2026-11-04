@@ -35,7 +35,7 @@ What each screen does:
 - **Pause**: Esc releases the mouse; RESUME / SETTINGS (sensitivity, volume, FOV, remembered) / QUIT TO MENU.
 - **Results**: a 1.5 s slow-motion freeze, then structures leveled, voxels destroyed, biggest chain, arena wrecked and the final score count up. Says whether you made the top 100 or how many more points you needed.
 - **Initials**: three arcade letter columns. Type, or use the arrows; ENTER submits.
-- **Leaderboard**: tabs per theme plus ALL, top 10, your row highlighted, PLAY AGAIN.
+- **Leaderboard**: tabs per theme plus ALL, top 10, your row highlighted, PLAY AGAIN. Scores are kept on the server; a score only counts if it comes from a real round (a signed session, submitted once, between 2.5 and 10 minutes after deploying, under a per-theme ceiling). Rude initials become `???`.
 
 ## The in-round loop
 
@@ -191,12 +191,12 @@ Same theme and seed always build the same arena. Structures never float: each st
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
 - Aim zoom (Mouse 2 only tightens spread; the FOV does not change).
-- Scores that survive a server restart: the leaderboard lives in the server's memory until phase 5 adds SQLite, signed sessions and validation.
 - Live low-res renders on the theme cards (cards are stylised art; the arena behind the picker is the live one).
 
 
 ## Changelog
 
+- 2026-11-04: Phase 5 — scores persist on the server with signed sessions and validation
 - 2026-11-04: Phase 4 — all screens, the round clock, HUD, radial picker, pause, results, initials, leaderboard; palette, outlines and contextual siting from user requests
 - 2026-11-04: Phase 3 — three arenas with fourteen structure types, scoring with combos, leveled bonus and milestones
 - 2026-11-04: Phase 2 — all eight weapons fire, carving, chain reactions, debris, effects and sound; test wall harness

@@ -36,7 +36,11 @@ flowchart TB
     end
     subgraph server[Node server · server/src]
         SV[index.ts static + /api]
-        AP[api.ts in-memory session, score, leaderboard, qualifies]
+        AP[api.ts session, score, leaderboard, qualifies]
+        TK[token.ts HMAC]
+        VA[validate.ts]
+        DBm[db.ts better-sqlite3]
+        FS[(DATA_DIR/scores.db)]
     end
     CFG[(config/ shared tables)]
     M --> G & FL & UI
@@ -60,6 +64,8 @@ flowchart TB
     SC -. scoreChanged, structureDamaged, milestone .-> EV
     DE --> PH --> RP
     SV --> AP
+    AP --> TK & VA & DBm
+    DBm --> FS
     CFG --- main
     CFG --- workers
 ```
@@ -127,8 +133,8 @@ sequenceDiagram
     S->>F: toWorldPicker / pickTheme / toLoadout / deploy
     F->>G: loadWorld(theme, seed) (on each pick)
     F->>A: startSession(theme, seed)
-    A->>SV: POST /session
-    SV-->>F: token, startedAt
+    A->>SV: POST /session (rate limited per IP)
+    SV-->>F: HMAC token {theme, seed, startedAt, nonce}
     F->>F: countdown 3 s → startPlaying (Round.start, lock pointer)
     loop playing
         F->>F: Round.update → tick events
@@ -141,7 +147,9 @@ sequenceDiagram
     U->>S: type initials, ENTER
     S->>F: submitInitials
     F->>A: submitScore(token, initials, score, stats)
-    A->>SV: POST /score (token single-use)
+    A->>SV: POST /score
+    SV->>SV: verify signature, 150–600 s window, initials, score cap, nonce unused
+    SV->>SV: INSERT scores, invalidate cache
     SV-->>S: accepted, rank
     S->>A: leaderboard(theme)
 ```
@@ -568,7 +576,20 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `ViewModel(weapons)` — one model per weapon plus two hand blocks and a muzzle-flash quad, attached to the overlay camera
   - `select(id)`, `kick(amount, now, muzzle)`, `startSwing()`, `update(dt, now, moving, speed)` — recoil, bob, swing arc, flash timing
 - `server/src/index.ts` **[server]** — Hono app: serves `client/dist`, mounts `/api`
-- `server/src/api.ts` **[server]** — in-memory for now: `GET /health`, `POST /session` (random token), `POST /score` (single-use token, `^[A-Z ]{3}$`, score ≥ 0), `GET /leaderboard?theme&limit`, `GET /qualifies?theme&score`
+- `server/src/api.ts` **[server]**
+  - `createApi({db, signer, skipTimeCheck, now}) → Hono` — `GET /health`; `POST /session` (10/min per IP, signed token); `POST /score` (signature, 150–600 s window, initials + profanity, per-theme cap, single-use nonce, IP hash only); `GET /leaderboard?theme&limit` (5 s cache); `GET /qualifies?theme&score`
+- `server/src/db.ts` **[server]**
+  - `Db(file)` — `scores` table with `(theme, score DESC)` index, `used_tokens`, WAL
+  - `insertScore(row)`, `top(theme, limit)`, `rankFor(theme, score, prospective)`, `cutoff(theme)`, `useToken(nonce, now)`, `pruneTokens(now, maxAge)`, `close()`
+- `server/src/token.ts` **[server]**
+  - `TokenSigner(secret)` — `sign(payload)`, `verify(token)` (timing-safe), `TokenSigner.nonce()`
+  - `resolveSecret(env)` — `SCORE_SECRET` or a random per-process secret with a warning
+- `server/src/validate.ts` **[server]**
+  - `cleanInitials(s)` — `^[A-Z ]{3}$`, profanity → `???`
+  - `validScore(theme, score)` — integer, 0 … themeMax × 5
+  - `validElapsed(startedAt, now, skip)` — 150–600 s
+  - `RateLimiter(limit, windowMs).allow(key, now)`
+  - `isTheme(t)`, `maxScoreFor(theme)`
 - `scripts/screenshots.mjs` — Playwright capture of `?screen=` pages against the built server
 - `scripts/dev/probe.mjs` — headless probe that evaluates a script against `window.__vw`
 
@@ -624,6 +645,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Settings remembered between visits | `SettingsScreen`, `settings.save` |
 | Slow-motion round end, results count-up | `Flow.endRound`, `Flow.updateFreeze`, `ResultsScreen` |
 | Top-100 check, initials, submission, leaderboard tabs | `Flow.endRound` → `api.qualifies`, `InitialsScreen`, `Flow.submitInitials`, `LeaderboardScreen` |
+| Scores survive a restart; forged or replayed scores are rejected | `Db`, `TokenSigner`, `validate.ts`, `createApi` |
 | Contextual placement (roadside, blocks, paths, hills) | `candidates` in `placer.ts`, `Recipe.siting` |
 | Voxel outlines, bevel, hatch | `VoxelMaterial` fragment shader |
 
@@ -631,11 +653,11 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 
 Modules in SPEC.md "Project structure" with no code at this commit:
 
-- `server/src/db.ts`, `server/src/token.ts`, `server/src/validate.ts` — SQLite, HMAC tokens, time-window and score-cap validation, rate limit, profanity list, leaderboard cache (the routes exist in memory only)
 - Aim zoom (`adsFovMul` is in config; nothing applies it)
 
 ## Changelog
 
+- 2026-11-04: Phase 5 — db.ts, token.ts, validate.ts, real api.ts; server subgraph and lifecycle sequence updated
 - 2026-11-04: Phase 4 — Flow, Round, api.ts, in-memory server routes, UI root, nine screens, eight HUD widgets; contextual siting and the outline shader; round lifecycle sequence
 - 2026-11-04: Phase 3 — StructureCtx, placer, 14 recipes, Score wired into Game; placement and scoring sequences
 - 2026-11-04: Phase 2 — Game loop, Weapons, ViewModel, Destruction wired, Debris on Rapier heightfield, Effects, Synth; sequences for a shot, a chain frame and a grenade

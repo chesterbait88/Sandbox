@@ -16,7 +16,7 @@ let baseUrl = process.argv[2];
 if (!baseUrl) {
   const port = 8099;
   server = spawn(process.execPath, ['server/dist/index.js'], {
-    env: { ...process.env, PORT: String(port), DATA_DIR: path.resolve('screenshots/.data') },
+    env: { ...process.env, PORT: String(port), DATA_DIR: path.resolve('screenshots/.data'), VW_DEV_NO_TIME_CHECK: '1' },
     stdio: 'inherit'
   });
   baseUrl = `http://localhost:${port}`;
