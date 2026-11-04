@@ -31,6 +31,7 @@ export class Debris {
     // Flat normals; emit attribute required by the voxel material.
     const n = geo.attributes.position.count;
     geo.setAttribute('emit', new THREE.BufferAttribute(new Uint8Array(n), 1, true));
+    geo.setAttribute('terr', new THREE.BufferAttribute(new Uint8Array(n), 1, true));
     // Vertex colour is white; the per-instance colour carries the material tint.
     geo.setAttribute('color', new THREE.BufferAttribute(new Uint8Array(n * 3).fill(255), 3, true));
     const mat = createOpaqueMaterial();

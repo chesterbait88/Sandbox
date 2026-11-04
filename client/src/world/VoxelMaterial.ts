@@ -6,9 +6,20 @@ import { RENDER, VOXEL_SIZE } from '@vw/config';
  * fragment shader from world position, so greedy-merged quads still show per-voxel variation
  * and the jitter is stable across remeshes. `emit` attribute makes neon glow.
  */
-function patch(mat: THREE.Material, voxelSize: number): void {
+export interface VoxelStyle {
+  outline: number;
+  bevel: number;
+  hatch: number;
+}
+
+const FULL: VoxelStyle = { outline: 1, bevel: 1, hatch: 1 };
+
+/** `style` scales the outline / bevel / hatch for every face of this material (the view model). */
+function patch(mat: THREE.Material, voxelSize: number, style: VoxelStyle): void {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uJitter = { value: RENDER.colorJitter };
+    shader.uniforms.uStyle = { value: [style.outline, style.bevel, style.hatch] };
+    shader.uniforms.uTerrain = { value: [RENDER.terrainStyle.outline, RENDER.terrainStyle.bevel, RENDER.terrainStyle.hatch] };
     shader.uniforms.uVoxel = { value: voxelSize };
     shader.uniforms.uOutline = { value: [RENDER.outlineWidth, RENDER.outlineStrength] };
     shader.uniforms.uBevel = { value: [RENDER.bevelWidth, RENDER.bevelStrength] };
@@ -16,7 +27,7 @@ function patch(mat: THREE.Material, voxelSize: number): void {
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vNrm;\nattribute float emit;\nvarying float vEmit;'
+        '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vNrm;\nattribute float emit;\nvarying float vEmit;\nattribute float terr;\nvarying float vTerr;'
       )
       .replace(
         '#include <begin_vertex>',
@@ -28,16 +39,18 @@ vNrm = normalize((instanceMatrix * vec4(normal, 0.0)).xyz);
 vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vNrm = normal;
 #endif
-vEmit = emit;`
+vEmit = emit;
+vTerr = terr;`
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vNrm;\nvarying float vEmit;\nuniform float uJitter;\nuniform float uVoxel;\nuniform vec2 uOutline;\nuniform vec2 uBevel;\nuniform vec2 uHatch;'
+        '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vNrm;\nvarying float vEmit;\nvarying float vTerr;\nuniform float uJitter;\nuniform float uVoxel;\nuniform vec2 uOutline;\nuniform vec2 uBevel;\nuniform vec2 uHatch;\nuniform vec3 uStyle;\nuniform vec3 uTerrain;'
       )
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
+vec3 sty = mix(vec3(1.0), uTerrain, vTerr) * uStyle;
 vec3 vpos = (vWPos - vNrm * uVoxel * 0.1) / uVoxel;
 vec3 vc = floor(vpos);
 float hsh = fract(sin(dot(vc, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
@@ -52,13 +65,13 @@ float px = fwidth(edge);
 float ow = max(uOutline.x, px * 1.2);
 float outline = 1.0 - smoothstep(ow * 0.5, ow, edge);
 float fade = clamp(1.0 - px * 6.0, 0.0, 1.0);
-diffuseColor.rgb *= 1.0 - outline * uOutline.y * (0.4 + 0.6 * fade);
+diffuseColor.rgb *= 1.0 - outline * uOutline.y * sty.x * (0.4 + 0.6 * fade);
 float bevel = max(1.0 - smoothstep(0.0, uBevel.x, uv.x), 1.0 - smoothstep(0.0, uBevel.x, 1.0 - uv.y));
-diffuseColor.rgb *= 1.0 + bevel * uBevel.y * (1.0 - outline) * fade;
+diffuseColor.rgb *= 1.0 + bevel * uBevel.y * sty.y * (1.0 - outline) * fade;
 if (uHatch.x > 0.0) {
   float hl = abs(fract((uv.x + uv.y) * uHatch.x) - 0.5) * 2.0;
   float hatch = 1.0 - smoothstep(0.75, 0.95, hl);
-  diffuseColor.rgb *= 1.0 - hatch * uHatch.y * fade * (1.0 - outline);
+  diffuseColor.rgb *= 1.0 - hatch * uHatch.y * sty.z * fade * (1.0 - outline);
 }`
       )
       .replace(
@@ -68,24 +81,25 @@ if (uHatch.x > 0.0) {
   };
 }
 
-export function createOpaqueMaterial(voxelSize = VOXEL_SIZE): THREE.MeshLambertMaterial {
+export function createOpaqueMaterial(voxelSize = VOXEL_SIZE, style: VoxelStyle = FULL): THREE.MeshLambertMaterial {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
-  patch(m, voxelSize);
+  patch(m, voxelSize, style);
   return m;
 }
 
-export function createTransparentMaterial(voxelSize = VOXEL_SIZE): THREE.MeshLambertMaterial {
+export function createTransparentMaterial(voxelSize = VOXEL_SIZE, style: VoxelStyle = FULL): THREE.MeshLambertMaterial {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false });
-  patch(m, voxelSize);
+  patch(m, voxelSize, style);
   return m;
 }
 
-export function buildGeometry(b: { position: Float32Array; normal: Float32Array; color: Uint8Array; emit: Uint8Array; index: Uint32Array }): THREE.BufferGeometry {
+export function buildGeometry(b: { position: Float32Array; normal: Float32Array; color: Uint8Array; emit: Uint8Array; terr: Uint8Array; index: Uint32Array }): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(b.position, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(b.normal, 3));
   g.setAttribute('color', new THREE.BufferAttribute(b.color, 3, true));
   g.setAttribute('emit', new THREE.BufferAttribute(b.emit, 1, true));
+  g.setAttribute('terr', new THREE.BufferAttribute(b.terr, 1, true));
   g.setIndex(new THREE.BufferAttribute(b.index, 1));
   g.computeBoundingSphere();
   return g;

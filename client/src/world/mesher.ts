@@ -12,6 +12,8 @@ export interface MeshBuffers {
   normal: Float32Array;
   color: Uint8Array;
   emit: Uint8Array;
+  /** 255 on terrain faces, 0 on structure faces: the shader relaxes the outline on terrain. */
+  terr: Uint8Array;
   index: Uint32Array;
 }
 
@@ -35,6 +37,7 @@ const baseRgb: [number, number, number][] = [];
 const altRgb: ([number, number, number] | null)[] = [];
 const transparentMat = new Uint8Array(MAX_MATERIAL_ID + 1);
 const emissiveMat = new Uint8Array(MAX_MATERIAL_ID + 1);
+const terrainMat = new Uint8Array(MAX_MATERIAL_ID + 1);
 const patternMat: (string | undefined)[] = [];
 for (let i = 0; i <= MAX_MATERIAL_ID; i++) {
   const m = MATERIALS[i];
@@ -42,6 +45,7 @@ for (let i = 0; i <= MAX_MATERIAL_ID; i++) {
   altRgb[i] = m?.color2 ? hexToRgb(m.color2) : null;
   transparentMat[i] = m?.transparent ? 1 : 0;
   emissiveMat[i] = m?.emissive ? 1 : 0;
+  terrainMat[i] = m?.terrain ? 255 : 0;
   patternMat[i] = m?.pattern;
 }
 
@@ -91,8 +95,8 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
   };
 
   const out = {
-    opaque: { pos: new GrowF32(), nrm: new GrowF32(), col: new GrowU8(), emit: new GrowU8(), idx: new GrowU32(), count: 0 },
-    transparent: { pos: new GrowF32(), nrm: new GrowF32(), col: new GrowU8(), emit: new GrowU8(), idx: new GrowU32(), count: 0 }
+    opaque: { pos: new GrowF32(), nrm: new GrowF32(), col: new GrowU8(), emit: new GrowU8(), terr: new GrowU8(), idx: new GrowU32(), count: 0 },
+    transparent: { pos: new GrowF32(), nrm: new GrowF32(), col: new GrowU8(), emit: new GrowU8(), terr: new GrowU8(), idx: new GrowU32(), count: 0 }
   };
 
   // Mask per slice: colour key (-1 = none), ao bits, direction sign, transparency.
@@ -192,6 +196,7 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
           const g = (c >> 8) & 255;
           const b = c & 255;
           const em = emissiveMat[mat] ? 255 : 0;
+          const tr = terrainMat[mat];
           const a0 = ao & 3;
           const a1 = (ao >> 2) & 3;
           const a2 = (ao >> 4) & 3;
@@ -221,6 +226,7 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
             const sh = shade(aos[k]);
             target.col.push3((r * sh) | 0, (g * sh) | 0, (b * sh) | 0);
             target.emit.push(em);
+            target.terr.push(tr);
           }
           // Flip the diagonal to avoid AO anisotropy artefacts.
           const flip = a0 + a2 > a1 + a3;
@@ -254,6 +260,7 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
     normal: o.nrm.slice(),
     color: o.col.slice(),
     emit: o.emit.slice(),
+    terr: o.terr.slice(),
     index: o.idx.slice()
   });
   return { opaque: pack(out.opaque), transparent: pack(out.transparent) };
@@ -262,7 +269,7 @@ export function meshVoxels(vox: Uint8Array, opts: MeshOptions): MeshResult {
 export function transferables(r: MeshResult): ArrayBuffer[] {
   const list: ArrayBuffer[] = [];
   for (const b of [r.opaque, r.transparent]) {
-    list.push(b.position.buffer as ArrayBuffer, b.normal.buffer as ArrayBuffer, b.color.buffer as ArrayBuffer, b.emit.buffer as ArrayBuffer, b.index.buffer as ArrayBuffer);
+    list.push(b.position.buffer as ArrayBuffer, b.normal.buffer as ArrayBuffer, b.color.buffer as ArrayBuffer, b.emit.buffer as ArrayBuffer, b.terr.buffer as ArrayBuffer, b.index.buffer as ArrayBuffer);
   }
   return list;
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VIEW_MODEL, WEAPON_TUNING, type ModelBox, type Weapon } from '@vw/config';
+import { RENDER, VIEW_MODEL, WEAPON_TUNING, type ModelBox, type Weapon } from '@vw/config';
 import { meshVoxels } from '../world/mesher';
 import { buildGeometry, createOpaqueMaterial, createTransparentMaterial } from '../world/VoxelMaterial';
 
@@ -14,7 +14,7 @@ export function voxelsFromBoxes(boxes: ModelBox[], size: { x: number; y: number;
   return { vox, P };
 }
 
-const modelMats = { opaque: createOpaqueMaterial(VIEW_MODEL.voxelM), transparent: createTransparentMaterial(VIEW_MODEL.voxelM) };
+const modelMats = { opaque: createOpaqueMaterial(VIEW_MODEL.voxelM, RENDER.viewModelStyle), transparent: createTransparentMaterial(VIEW_MODEL.voxelM, RENDER.viewModelStyle) };
 
 /** Mesh a small voxel model on the main thread (tiny arrays, not chunks). Centred on its bounds. */
 export function buildModelMesh(boxes: ModelBox[], size: { x: number; y: number; z: number }, voxelM: number): THREE.Group {

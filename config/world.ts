@@ -28,6 +28,11 @@ export const RENDER = {
   /** Diagonal cross-hatch inside each face: lines per voxel and darkening. 0 disables. */
   hatchLines: 3,
   hatchStrength: 0.07,
+  /** Multipliers on outline / bevel / hatch strength for terrain faces (the `terr` vertex attribute),
+   *  so ground reads as ground and buildings keep the full voxel treatment. */
+  terrainStyle: { outline: 0.3, bevel: 0.5, hatch: 0 },
+  /** Same multipliers for the weapon in hand, so it reads as a solid object rather than a grid. */
+  viewModelStyle: { outline: 0.35, bevel: 0.8, hatch: 0 },
   /** Dirty chunks sent to the mesher per frame. */
   remeshPerFrame: 4,
   /** Chunks per frame while a whole world is loading. */
