@@ -11,8 +11,8 @@ import { resolveSecret, TokenSigner } from './token';
 const PORT = Number(process.env.PORT ?? 8080);
 const DATA_DIR = process.env.DATA_DIR ?? path.resolve(process.cwd(), 'data');
 const here = path.dirname(fileURLToPath(import.meta.url));
-/** Built client: client/dist relative to the repo root, whether running from src (tsx) or dist. */
-const candidates = [path.resolve(here, '../../client/dist'), path.resolve(here, '../client/dist'), path.resolve(process.cwd(), 'client/dist')];
+/** Built client: CLIENT_DIST if set (dev builds into a scratch dir), else client/dist relative to the repo root. */
+const candidates = [...(process.env.CLIENT_DIST ? [path.resolve(process.env.CLIENT_DIST)] : []), path.resolve(here, '../../client/dist'), path.resolve(here, '../client/dist'), path.resolve(process.cwd(), 'client/dist')];
 const clientDist = candidates.find((p) => existsSync(p));
 
 const db = new Db(path.join(DATA_DIR, 'scores.db'));
