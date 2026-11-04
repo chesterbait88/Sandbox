@@ -19,6 +19,15 @@ export const RENDER = {
   colorJitter: 0.06,
   /** Max darkening from vertex ambient occlusion (fraction). */
   aoStrength: 0.35,
+  /** Per-voxel edge outline: width as a fraction of a voxel, darkening at the edge. */
+  outlineWidth: 0.07,
+  outlineStrength: 0.42,
+  /** Light bevel along the top and left edge of each face. */
+  bevelWidth: 0.16,
+  bevelStrength: 0.14,
+  /** Diagonal cross-hatch inside each face: lines per voxel and darkening. 0 disables. */
+  hatchLines: 3,
+  hatchStrength: 0.07,
   /** Dirty chunks sent to the mesher per frame. */
   remeshPerFrame: 4,
   /** Chunks per frame while a whole world is loading. */
