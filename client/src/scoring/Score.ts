@@ -1,4 +1,4 @@
-import { MATERIALS, MILESTONE_INTERVAL, SCORING, milestoneFor, type MilestoneReward } from '@vw/config';
+import { MATERIALS, MILESTONE_INTERVAL, SCORING, milestoneFor, voxelValue, type MilestoneReward } from '@vw/config';
 import { events, type Destroyed } from '../state/events';
 import type { StructureInfo } from '../world/World';
 
@@ -9,7 +9,7 @@ interface Entry {
 }
 
 const valueOf = new Float32Array(256);
-for (const m of Object.values(MATERIALS)) valueOf[m.id] = m.value;
+for (const m of Object.values(MATERIALS)) valueOf[m.id] = voxelValue(m);
 
 /**
  * Round scoring: material value per destroyed structure voxel × combo multiplier, leveled bonus,

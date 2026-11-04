@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MAT, SCORING } from '@vw/config';
+import { MAT, SCORE_BLOCK_M, SCORING, VOXEL_SIZE } from '@vw/config';
 import { Score } from './Score';
 import { events } from '../state/events';
 
-const v = (owner: number, mat: number, n: number) => Array.from({ length: n }, (_, i) => ({ x: i, y: 0, z: 0, mat, owner }));
+/** Voxels per scoring block: material values are quoted per SCORE_BLOCK_M cube. */
+const PER = Math.round((SCORE_BLOCK_M / VOXEL_SIZE) ** 3);
+/** n blocks' worth of destroyed voxels. */
+const v = (owner: number, mat: number, n: number) => Array.from({ length: n * PER }, (_, i) => ({ x: i, y: 0, z: 0, mat, owner }));
 
 describe('Score', () => {
   let s: Score;
@@ -21,7 +24,7 @@ describe('Score', () => {
     expect(s.score).toBe(0);
     s.onDestroyed(v(1, MAT.CONCRETE, 4));
     expect(s.score).toBe(20);
-    expect(s.voxelsDestroyed).toBe(54);
+    expect(s.voxelsDestroyed).toBe(54 * PER);
   });
 
   it('detonations raise the multiplier, capped, and it decays after the window', () => {

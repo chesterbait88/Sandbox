@@ -1,9 +1,11 @@
+import { VOXEL_SIZE } from './world';
+
 export interface Material {
   id: number;
   name: string;
   /** CSS hex colour. */
   color: string;
-  /** Score per destroyed voxel. */
+  /** Score per destroyed block of SCORE_BLOCK_M edge (see voxelValue). */
   value: number;
   /** Energy needed to destroy a voxel. */
   hardness: number;
@@ -115,6 +117,14 @@ export const VOLATILE = {
    *  centres are 2.2 m apart at 0.25 m voxels. */
   dedupeRadiusM: 2.5
 } as const;
+
+/** Material values are quoted per cube of this edge, so the voxel size can change without rescoring. */
+export const SCORE_BLOCK_M = 0.5;
+
+/** Points paid by one destroyed voxel of this material. */
+export function voxelValue(m: Material): number {
+  return m.value / (SCORE_BLOCK_M / VOXEL_SIZE) ** 3;
+}
 
 export function materialOf(id: number): Material | undefined {
   return MATERIALS[id];

@@ -1,10 +1,10 @@
-import { MATERIALS, VOXEL_SIZE, WORLD_VOXELS } from '@vw/config';
+import { MATERIALS, VOXEL_SIZE, WORLD_VOXELS, voxelValue } from '@vw/config';
 
 const SX = WORLD_VOXELS.x;
 const SY = WORLD_VOXELS.y;
 const SZ = WORLD_VOXELS.z;
 const valueOf = new Float32Array(256);
-for (const m of Object.values(MATERIALS)) valueOf[m.id] = m.value;
+for (const m of Object.values(MATERIALS)) valueOf[m.id] = voxelValue(m);
 
 /**
  * Recipe drawing context. Coordinates are local voxels: x across, z deep, y up from the pad
