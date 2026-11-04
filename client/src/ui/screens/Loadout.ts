@@ -11,7 +11,7 @@ import { THEMES } from '@vw/config';
 export class LoadoutScreen extends Screen {
   private slots: { el: HTMLElement; view: HTMLElement; model: THREE.Group }[] = [];
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+  private camera = new THREE.PerspectiveCamera(42, 1, 0.01, 10);
   private arena: HTMLElement;
   private t = 0;
 
@@ -25,7 +25,7 @@ export class LoadoutScreen extends Screen {
     const dl = new THREE.DirectionalLight('#ffffff', 1.6);
     dl.position.set(1, 2, 2);
     this.scene.add(dl);
-    this.camera.position.set(0, 0.25, 1.6);
+    this.camera.position.set(0, 0.2, 0.95);
     this.camera.lookAt(0, 0, 0);
     for (const w of WEAPONS) {
       const slot = h('div', 'slot');

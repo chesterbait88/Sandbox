@@ -51,7 +51,13 @@ export class Input {
   }
 
   requestLock(): void {
-    if (!this.locked) this.canvas.requestPointerLock?.();
+    if (this.locked) return;
+    try {
+      const r = this.canvas.requestPointerLock?.() as unknown as Promise<void> | undefined;
+      r?.catch?.(() => {});
+    } catch {
+      /* no gesture yet (or headless) */
+    }
   }
 
   releaseLock(): void {

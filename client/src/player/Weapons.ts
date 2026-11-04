@@ -37,6 +37,19 @@ interface Charge {
 }
 
 const PM = PROJECTILE_MODELS;
+
+/** Thrown and placed weapons keep their whole count in `mag`; guns start with a full magazine. */
+function initialMag(w: Weapon): number {
+  if (!Number.isFinite(w.totalAmmo)) return Infinity;
+  if (w.kind === 'thrown' || w.kind === 'placed') return w.totalAmmo;
+  return Math.min(w.magSize, w.totalAmmo);
+}
+
+function initialReserve(w: Weapon): number {
+  if (!Number.isFinite(w.totalAmmo)) return Infinity;
+  if (w.kind === 'thrown' || w.kind === 'placed') return 0;
+  return Math.max(0, w.totalAmmo - w.magSize);
+}
 const PSIZE = { x: 8, y: 8, z: 12 };
 
 /**
@@ -47,8 +60,8 @@ const PSIZE = { x: 8, y: 8, z: 12 };
 export class Weapons {
   slots: WeaponState[] = WEAPONS.map((w) => ({
     def: w,
-    mag: Number.isFinite(w.magSize) ? Math.min(w.magSize, w.totalAmmo) : Infinity,
-    reserve: Number.isFinite(w.totalAmmo) ? Math.max(0, w.totalAmmo - (w.kind === 'thrown' || w.kind === 'placed' ? 0 : w.magSize)) : Infinity,
+    mag: initialMag(w),
+    reserve: initialReserve(w),
     reloading: 0,
     cooldown: 0
   }));
@@ -83,8 +96,8 @@ export class Weapons {
   reset(): void {
     for (const s of this.slots) {
       const w = s.def;
-      s.mag = Number.isFinite(w.magSize) ? Math.min(w.magSize, w.totalAmmo) : Infinity;
-      s.reserve = Number.isFinite(w.totalAmmo) ? Math.max(0, w.totalAmmo - (w.kind === 'thrown' || w.kind === 'placed' ? 0 : w.magSize)) : Infinity;
+      s.mag = initialMag(w);
+      s.reserve = initialReserve(w);
       s.reloading = 0;
       s.cooldown = 0;
     }

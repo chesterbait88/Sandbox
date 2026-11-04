@@ -8,7 +8,7 @@ import path from 'node:path';
 const OUT = path.resolve('screenshots');
 mkdirSync(OUT, { recursive: true });
 
-const SCREENS = (process.env.SCREENS ?? 'menu').split(',');
+const SCREENS = (process.env.SCREENS ?? 'menu,picker,loadout,hud,pause,results,initials,leaderboard').split(',');
 const SIZE = { width: 1280, height: 720 };
 
 let server;
@@ -32,7 +32,7 @@ page.on('pageerror', (e) => console.error('[pageerror]', e.message));
 page.on('console', (m) => { if (m.type() === 'error') console.error('[console]', m.text()); });
 
 for (const screen of SCREENS) {
-  const url = `${baseUrl}/?screen=${screen}&seed=1234&headless=1`;
+  const url = `${baseUrl}/?screen=${screen}&seed=1234&theme=desert&headless=1${screen === 'hud' ? '&test=wall' : ''}`;
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__vwReady === true, null, { timeout: 60000 }).catch(() => {
     console.warn(`[${screen}] ready flag not set, capturing anyway`);

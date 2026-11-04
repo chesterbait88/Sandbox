@@ -7,7 +7,9 @@ The codebase **as it exists at the current commit**: modules, functions and the 
 ```mermaid
 flowchart TB
     subgraph main[Main thread · client/src]
-        M[main.ts boot]
+        M[main.ts boot + ?screen jumps]
+        FL[game/Flow state machine + Round]
+        UI[ui/UI screens + hud]
         G[game/Game frame loop]
         R[render/Renderer]
         W[world/World]
@@ -34,10 +36,15 @@ flowchart TB
     end
     subgraph server[Node server · server/src]
         SV[index.ts static + /api]
-        AP[api.ts /health]
+        AP[api.ts in-memory session, score, leaderboard, qualifies]
     end
     CFG[(config/ shared tables)]
-    M --> G
+    M --> G & FL & UI
+    FL -- timeScale, cameras, enable --> G
+    UI -- buttons --> FL
+    FL -. tick, roundEnd .-> EV
+    EV -. score, ammo, structure, milestone .-> UI
+    UI -- fetch /api --> SV
     G --> R & CR & WG & PC & IN & WP & DM & DE & EF & PH & VM
     CR -- padded chunk --> MW
     MW -- geometry buffers --> CR
@@ -57,7 +64,7 @@ flowchart TB
     CFG --- workers
 ```
 
-The browser loads the client from the Node server; the client makes no API calls yet. `Game` is the only subscriber to the event emitter: it routes `hit`/`detonation` to debris, effects, audio and `Score`, `weaponFire`/`weaponSwitch` to audio, and `milestone` to ammo grants. `Score` emits its own events, which nothing displays yet.
+`Game` owns the systems and the frame loop; `Flow` decides each frame whether the player runs (and drives the orbit/countdown cameras); `UI` owns the DOM. Gameplay never touches the DOM: the HUD and screens subscribe to `events`, and `Flow` is the only thing the screens call. The client talks to the server through `scoring/api.ts` for sessions, score submission, the leaderboard and the top-100 check.
 
 ## Sequence: a world loads and becomes walkable
 
@@ -104,6 +111,39 @@ sequenceDiagram
     P->>P: updateCamera
     M->>R: render()
     M->>I: endFrame()
+```
+
+## Sequence: the round lifecycle against the server
+
+```mermaid
+sequenceDiagram
+    actor U as Player
+    participant S as Screens
+    participant F as Flow
+    participant G as Game
+    participant A as api.ts
+    participant SV as server api.ts
+    U->>S: PLAY → pick theme → NEXT → DEPLOY
+    S->>F: toWorldPicker / pickTheme / toLoadout / deploy
+    F->>G: loadWorld(theme, seed) (on each pick)
+    F->>A: startSession(theme, seed)
+    A->>SV: POST /session
+    SV-->>F: token, startedAt
+    F->>F: countdown 3 s → startPlaying (Round.start, lock pointer)
+    loop playing
+        F->>F: Round.update → tick events
+    end
+    F->>F: endRound: freeze 1.5 s, Score.active = false
+    F->>A: qualifies(theme, score)
+    A->>SV: GET /qualifies
+    SV-->>F: rank, qualifies, needed
+    F->>S: results → initials (if top 100)
+    U->>S: type initials, ENTER
+    S->>F: submitInitials
+    F->>A: submitScore(token, initials, score, stats)
+    A->>SV: POST /score (token single-use)
+    SV-->>S: accepted, rank
+    S->>A: leaderboard(theme)
 ```
 
 ## Sequence: placing one structure (gen.worker)
@@ -256,6 +296,30 @@ classDiagram
         Vec3 center
         number voxels
     }
+    class Flow {
+        ScreenName state
+        ThemeId theme
+        string seed
+        Round round
+        Session session
+        RoundResult result
+        boot(), deploy(), pause(), resume()
+        endRound(), submitInitials(), playAgain()
+        update(rawDt) boolean
+    }
+    class Round {
+        number remaining
+        boolean running
+        start(), stop(), addTime(), update(dt)
+    }
+    class RoundResult {
+        number score, voxelsDestroyed
+        number structuresLeveled, bestChain
+        number arenaPercent, rank, needed
+        boolean qualifies
+    }
+    Flow *-- Round
+    Flow --> RoundResult
     class Score {
         number score, multiplier, comboRemaining
         number chain, bestChain
@@ -350,8 +414,33 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `materialOf(id) → Material | undefined` — lookup
   - `milestoneFor(index) → MilestoneTier` — callout + reward for the nth milestone (unwired)
 - `client/src/main.ts` **[main]** — boot: builds `Game`, reads `?theme&seed&test`, exposes `window.__vw` for probes
+- `client/src/game/Flow.ts` **[main]**
+  - `Flow(game)` — state machine; subscribes `milestone` (time reward) and pointer-lock loss (pause)
+  - `boot(theme?, seed?)` — random arena for the menu backdrop
+  - `loadArena()` — regenerate for the current theme + seed (menu, picker, play again)
+  - `toMenu()`, `toWorldPicker()`, `pickTheme(id)`, `setSeed(s)`, `randomSeed()`, `toLoadout()`
+  - `deploy()` — session from the server, reset weapons/score, countdown
+  - `startPlaying()`, `pause()`, `resume()`, `quitToMenu()`
+  - `endRound()` — freeze, `roundEnd`, top-100 lookup, `RoundResult`
+  - `toResults()`, `afterResults()`, `submitInitials(s)`, `toLeaderboard()`, `playAgain()`
+  - `setRadial(open)` — 30 % time scale while the picker is open
+  - `update(rawDt) → boolean` — orbit camera in menus, countdown swoop, clock while playing; returns whether the controller runs
+  - `updateFreeze(rawDt)` — moves to results after the slow-motion freeze
+- `client/src/state/Round.ts` **[main]**
+  - `start()`, `stop()`, `addTime()`, `update(dt) → boolean` — 180 s clock, `tick` once a second, true when it hits zero
+- `client/src/scoring/api.ts` **[main]**
+  - `api.health()`, `startSession(theme, seed)`, `submitScore(token, initials, score, stats)`, `leaderboard(theme, limit)`, `qualifies(theme, score)`
+- `client/src/ui/UI.ts` **[main]**
+  - `UI(root, game, flow)` — builds every screen and HUD widget, maps `Flow` states to screens, shows the HUD in a round
+  - `showOverlay(screen)` — settings / credits on top of a screen
+  - `update(dt, now, game, flow)` — countdown number, radial, crosshair, combo ring, readout timeout
+- `client/src/ui/Screen.ts` — `show()/hide()` with enter/leave animation, `onShow()/onHide()`
+- `client/src/ui/dom.ts` — `h`, `button`, `fmt`, `tickNumber`, `pop`, `settings.load/save` (localStorage)
+- `client/src/ui/screens/` **[main]** — `Menu` (best strip), `WorldPicker` (cards, seed, dice, top scores), `Loadout` (eight scissored model viewports via `renderViews`), `Pause`, `Settings` (sensitivity/volume/FOV sliders), `Credits`, `Results` (count-ups), `Initials` (three columns, typing + arrows), `Leaderboard` (tabs, top 10, highlight)
+- `client/src/ui/hud/` **[main]** — `ScoreBar` (score tick, milestone fill, combo badge + ring), `Timer`, `Ammo` (mag/reserve/reload/pips/armed), `Radial` (Q hold, mouse-direction select), `StructureReadout` (3 s, LEVELED stamp), `Crosshair` (spread, hit marker), `Callouts` (milestone slam + flash), `Countdown`
 - `client/src/game/Game.ts` **[main]**
   - `Game(canvas, uiRoot)` — constructs every system, subscribes to events
+  - `flow`, `uiUpdate`, `afterRender` — hooks the state machine and UI into the frame
   - `init()` — Rapier init, debris pool
   - `loadWorld(theme, seed, terrainOnly)` — generate, install, heightfield, spawn, warm-up, wait for meshes
   - `warmup()` — carves a scratch world and steps physics so first-call JIT/first-contact costs are paid before play
@@ -479,7 +568,7 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
   - `ViewModel(weapons)` — one model per weapon plus two hand blocks and a muzzle-flash quad, attached to the overlay camera
   - `select(id)`, `kick(amount, now, muzzle)`, `startSwing()`, `update(dt, now, moving, speed)` — recoil, bob, swing arc, flash timing
 - `server/src/index.ts` **[server]** — Hono app: serves `client/dist`, mounts `/api`
-- `server/src/api.ts` **[server]** — `GET /api/health → {ok:true}`
+- `server/src/api.ts` **[server]** — in-memory for now: `GET /health`, `POST /session` (random token), `POST /score` (single-use token, `^[A-Z ]{3}$`, score ≥ 0), `GET /leaderboard?theme&limit`, `GET /qualifies?theme&score`
 - `scripts/screenshots.mjs` — Playwright capture of `?screen=` pages against the built server
 - `scripts/dev/probe.mjs` — headless probe that evaluates a script against `window.__vw`
 
@@ -519,21 +608,35 @@ Legend: **[main]** main thread · **[worker]** Web Worker · **[server]** Node �
 | Combo multiplier from chain detonations, 2 s window | `Score.onDetonation`, `Score.update` |
 | Leveled bonus, once per structure | `Score.onDestroyed` |
 | Milestones every 1,000 with ammo rewards and a stinger | `Score.add`, `Game.subscribe` → `Weapons.grant` |
+| +5 s milestone reward | `Flow` → `Round.addTime` |
+| Menu over an orbiting live arena | `Flow.update` (menu states), `Flow.boot` |
+| Theme cards rebuild the arena, seed + dice | `WorldPickerScreen`, `Flow.pickTheme`, `Flow.setSeed` |
+| Loadout briefing with spinning models | `LoadoutScreen.renderViews` |
+| 3-2-1 countdown with the camera dropping in | `Flow.update` (countdown), `Countdown` |
+| 3:00 clock, red under 30 s | `Round`, `Timer` |
+| Score bar, combo badge and ring | `ScoreBar` |
+| Radial picker with slow motion | `Radial`, `Flow.setRadial` |
+| Ammo panel, pips, ARMED | `Ammo` |
+| Structure readout and LEVELED stamp | `StructureReadout` |
+| Crosshair spread and hit markers | `Crosshair` |
+| Milestone callouts and screen flash | `Callouts` |
+| Esc pauses, pointer-lock loss pauses | `UI` keydown, `Input.onLockChange` → `Flow.pause` |
+| Settings remembered between visits | `SettingsScreen`, `settings.save` |
+| Slow-motion round end, results count-up | `Flow.endRound`, `Flow.updateFreeze`, `ResultsScreen` |
+| Top-100 check, initials, submission, leaderboard tabs | `Flow.endRound` → `api.qualifies`, `InitialsScreen`, `Flow.submitInitials`, `LeaderboardScreen` |
+| Contextual placement (roadside, blocks, paths, hills) | `candidates` in `placer.ts`, `Recipe.siting` |
+| Voxel outlines, bevel, hatch | `VoxelMaterial` fragment shader |
 
 ## Planned, not built
 
 Modules in SPEC.md "Project structure" with no code at this commit:
 
-- `client/src/state/` — GameState machine, round clock, stats (only the events type exists); the milestone `time` reward is received by nothing
-- `client/src/player/Weapons.ts` radial select (selection by keys/wheel exists; the radial picker does not)
-- `client/src/scoring/api.ts` — session/score/leaderboard fetches
-- `client/src/ui/screens/` — Menu, WorldPicker, Loadout, Pause, Results, Initials, Leaderboard
-- `client/src/ui/hud/` — ScoreBar, Timer, Radial, Ammo, StructureReadout, Crosshair, Callouts
-- `server/src/db.ts`, `server/src/token.ts`, `server/src/validate.ts` — SQLite, HMAC tokens, validation
-- `server/src/api.ts` routes `/session`, `/score`, `/leaderboard` (only `/health` exists)
+- `server/src/db.ts`, `server/src/token.ts`, `server/src/validate.ts` — SQLite, HMAC tokens, time-window and score-cap validation, rate limit, profanity list, leaderboard cache (the routes exist in memory only)
+- Aim zoom (`adsFovMul` is in config; nothing applies it)
 
 ## Changelog
 
+- 2026-11-04: Phase 4 — Flow, Round, api.ts, in-memory server routes, UI root, nine screens, eight HUD widgets; contextual siting and the outline shader; round lifecycle sequence
 - 2026-11-04: Phase 3 — StructureCtx, placer, 14 recipes, Score wired into Game; placement and scoring sequences
 - 2026-11-04: Phase 2 — Game loop, Weapons, ViewModel, Destruction wired, Debris on Rapier heightfield, Effects, Synth; sequences for a shot, a chain frame and a grenade
 - 2026-11-04: Initial snapshot at 580cf52

@@ -36,7 +36,7 @@ export class InitialsScreen extends Screen {
     }
     panel.append(row);
     this.meta = h('p', 'note', '');
-    this.status = h('p', 'note', 'W/S or ↑↓ cycle · A/D or ←→ move · ENTER confirms · or just type');
+    this.status = h('p', 'note', 'TYPE YOUR INITIALS · ↑↓ cycle · ←→ move · ENTER confirms');
     panel.append(this.meta, this.status, button('SUBMIT', 'primary big', () => void this.submit()));
     this.el.append(panel);
     window.addEventListener('keydown', (e) => this.onKey(e));
@@ -44,10 +44,12 @@ export class InitialsScreen extends Screen {
 
   private onKey(e: KeyboardEvent): void {
     if (!this.visible || this.submitting) return;
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') this.cycle(this.cur, -1);
-    else if (e.code === 'KeyS' || e.code === 'ArrowDown') this.cycle(this.cur, 1);
-    else if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.focus((this.cur + 2) % 3);
-    else if (e.code === 'KeyD' || e.code === 'ArrowRight') this.focus((this.cur + 1) % 3);
+    // Letters always type (so W/A/S/D can be initials); arrows navigate; Enter confirms.
+    if (e.code === 'ArrowUp') this.cycle(this.cur, -1);
+    else if (e.code === 'ArrowDown') this.cycle(this.cur, 1);
+    else if (e.code === 'ArrowLeft') this.focus((this.cur + 2) % 3);
+    else if (e.code === 'ArrowRight') this.focus((this.cur + 1) % 3);
+    else if (e.code === 'Backspace') this.focus((this.cur + 2) % 3);
     else if (e.code === 'Enter') void this.submit();
     else if (e.key.length === 1 && LETTERS.includes(e.key.toUpperCase())) {
       this.idx[this.cur] = LETTERS.indexOf(e.key.toUpperCase());
@@ -95,7 +97,7 @@ export class InitialsScreen extends Screen {
     const last = this.flow.lastInitials.padEnd(3, 'A');
     this.idx = [0, 1, 2].map((i) => Math.max(0, LETTERS.indexOf(last[i])));
     this.submitting = false;
-    this.status.textContent = 'W/S or ↑↓ cycle · A/D or ←→ move · ENTER confirms · or just type';
+    this.status.textContent = 'TYPE YOUR INITIALS · ↑↓ cycle · ←→ move · ENTER confirms';
     this.render();
     this.focus(0);
   }

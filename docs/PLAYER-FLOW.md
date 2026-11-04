@@ -2,44 +2,70 @@
 
 This describes the game **as a player experiences it at the current commit**. Nothing here is drawn ahead of the build. Missing mechanics are listed at the end under "Not yet playable".
 
-## Screens that exist today
+## Screens
 
-There is one screen: the arena. The page opens straight into it. Theme and seed come from the address bar; there is no menu, picker or results screen yet.
+The game is a loop of screens over a live arena. The menu, picker, loadout and leaderboard float over a slowly orbiting view of the arena that will be (or was) played.
 
 ```mermaid
 flowchart LR
-    A[Open the page] --> B[Arena generates<br/>theme + seed from the URL]
-    B --> C[Standing on the spawn pad<br/>facing the arena]
-    C -->|click the view| D[Mouse look is captured]
-    D -->|Esc| C
-    D --> E[Walk, sprint, jump, climb dunes]
-    E --> E
+    M[Start menu] -->|PLAY| P[World picker<br/>theme cards + seed]
+    M -->|LEADERBOARD| L[Leaderboard]
+    M -->|SETTINGS / CREDITS| M
+    P -->|NEXT| O[Loadout briefing]
+    P -->|BACK| M
+    O -->|DEPLOY| C[3-2-1 countdown<br/>camera drops to the pad]
+    O -->|BACK| P
+    C --> G[Playing · 3:00]
+    G <-->|Esc| Z[Paused]
+    Z -->|QUIT| M
+    G -->|clock hits 0| R[Results]
+    R -->|top 100| I[Initials]
+    R -->|not top 100| L
+    I -->|ENTER| L
+    L -->|PLAY AGAIN| P
+    L -->|MENU| M
 ```
 
-What the player sees: a sunlit voxel arena with six to ten structures from the theme's pool standing on flattened pads, a small caption at the top naming the theme and seed, and an optional stats readout (F3) that also shows the running score, the multiplier and the arena's percent wrecked. Adding `test=wall` to the address stamps a test wall with a fuel tank behind it near the spawn.
+What each screen does:
 
-## The in-round loop as it works now
+- **Start menu**: title, PLAY / LEADERBOARD / SETTINGS / CREDITS, and a "best" strip with the top score on record.
+- **World picker**: three theme cards (name, description, top score), a seed field with a dice button. Clicking a card rebuilds the arena behind the screen so you see what you picked.
+- **Loadout**: the eight slots with spinning models, ammo and role, plus the arena's total points standing and the round length. DEPLOY.
+- **Countdown**: 3, 2, 1, WRECK! while the camera swoops down onto the spawn pad.
+- **Pause**: Esc releases the mouse; RESUME / SETTINGS (sensitivity, volume, FOV, remembered) / QUIT TO MENU.
+- **Results**: a 1.5 s slow-motion freeze, then structures leveled, voxels destroyed, biggest chain, arena wrecked and the final score count up. Says whether you made the top 100 or how many more points you needed.
+- **Initials**: three arcade letter columns. Type, or use the arrows; ENTER submits.
+- **Leaderboard**: tabs per theme plus ALL, top 10, your row highlighted, PLAY AGAIN.
 
-There is no clock yet, so a "round" never ends. Score is kept but only shown in the stats readout; there is no HUD.
+## The in-round loop
 
 ```mermaid
 flowchart TD
-    I[Read keyboard and mouse] --> L[Turn the view]
-    L --> M[Accelerate toward the wish direction]
-    M --> J{Jump pressed<br/>and on ground?}
-    J -->|yes| K[Launch upward]
-    J -->|no| G[Apply gravity]
-    K --> G
-    G --> S[Slide the body against the voxel grid<br/>one axis at a time]
-    S --> U{Blocked by a<br/>single step?}
-    U -->|yes| V[Step up half a metre]
-    U -->|no| W[Stay put on that axis]
-    V --> R[Draw the world]
-    W --> R
-    R --> I
+    S[Spawn on the pad, 3:00 on the clock] --> L[Look, move, pick a weapon]
+    L --> F[Fire / swing / throw / place]
+    F --> D[Blocks fly, score ticks up]
+    D --> Q{Chain reaction?}
+    Q -->|yes| X[Combo ×1.5, ×2 … ×5<br/>ring drains over 2 s]
+    Q -->|no| L
+    X --> L
+    D --> Mi{Crossed 1,000?}
+    Mi -->|yes| Ca[Callout slams in<br/>+1 grenade / rocket / C4 / +5 s]
+    Ca --> L
+    L --> T{Clock at 0?}
+    T -->|no| L
+    T -->|yes| E[Slow motion, then results]
 ```
 
-### Wrecking something
+## The HUD
+
+- **Top**: score bar with the running score, the next milestone and a fill racing toward it; it flashes on every hit. A combo badge with a draining ring appears during chains.
+- **Top right**: the clock, red and pulsing under 30 s.
+- **Bottom left**: the current weapon's slot number and name. Holding Q fans all eight out in a circle, mouse direction highlights one, release selects it; the game runs at 30 % speed while it is open.
+- **Bottom right**: magazine and reserve, a reload bar, grenade and C4 pips, "N ARMED" while C4 charges are placed. Red when empty.
+- **Centre bottom**: structure readout for 3 s after a hit ("GAS STATION 78 % · 1,240 pts") and a LEVELED stamp.
+- **Centre**: crosshair that spreads for the shotgun and tightens while aiming; a hit marker ticks on every destroyed block.
+
+## Wrecking something
 
 Every hit, from a pickaxe tap to a C4 charge, carves a sphere out of the world. Harder materials need more energy, and energy fades toward the edge of the sphere.
 
@@ -77,7 +103,7 @@ stateDiagram-v2
     end note
 ```
 
-Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a stinger plays and a reward drops, cycling grenade → rocket → C4 → time. The ammo rewards are added to the loadout; the time reward has nothing to add to yet.
+Leveling a structure (100 % of its value destroyed) pays a one-time bonus of half its total value. Every 1,000 points is a milestone: a callout slams across the screen, a stinger plays and a reward drops, cycling +1 grenade → +1 rocket → +1 C4 → +5 s on the clock.
 
 ## A dramatic moment: grenade through a brick wall
 
@@ -109,9 +135,10 @@ sequenceDiagram
 | Mouse 1 | Fire, swing, throw, place C4 (click again to detonate) |
 | Mouse 2 | Aim: tighter spread (C4: detonate) |
 | 1–8, wheel | Switch weapon |
+| Q (hold) | Radial weapon picker, slow motion |
 | R | Reload |
 | G | Throw a grenade from any weapon |
-| Esc | Release the mouse |
+| Esc | Pause (and release the mouse) |
 | F3 | Toggle the stats readout |
 
 ## The loadout
@@ -163,17 +190,14 @@ Same theme and seed always build the same arena. Structures never float: each st
 
 Mechanics from SPEC.md that do not exist for the player at this commit:
 
-- Seeing the score, multiplier, combo ring, structure readout ("GAS STATION 78 % · 1,240 pts"), "LEVELED" stamp or milestone callouts on screen; they exist as events only.
-- The +5 s milestone reward (no clock to add it to).
-- The 3-minute round clock and the round-end slow motion.
-- The radial weapon picker (Q / wheel fan-out) and its slow motion; aim-zoom (aiming only tightens spread today).
-- Hit markers, crosshair, any on-screen ammo or weapon readout (ammo is tracked but not shown).
-- Start menu, world picker, loadout briefing, countdown, pause, results, initials entry, leaderboard.
-- Settings (sensitivity, volume, FOV).
-- The server: sessions, score submission, leaderboard storage.
+- Aim zoom (Mouse 2 only tightens spread; the FOV does not change).
+- Scores that survive a server restart: the leaderboard lives in the server's memory until phase 5 adds SQLite, signed sessions and validation.
+- Live low-res renders on the theme cards (cards are stylised art; the arena behind the picker is the live one).
+
 
 ## Changelog
 
+- 2026-11-04: Phase 4 — all screens, the round clock, HUD, radial picker, pause, results, initials, leaderboard; palette, outlines and contextual siting from user requests
 - 2026-11-04: Phase 3 — three arenas with fourteen structure types, scoring with combos, leveled bonus and milestones
 - 2026-11-04: Phase 2 — all eight weapons fire, carving, chain reactions, debris, effects and sound; test wall harness
 - 2026-11-04: Initial snapshot at 580cf52
